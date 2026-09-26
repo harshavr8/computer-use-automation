@@ -1,0 +1,92 @@
+# Hand-authored capability (not LLM-recorded) used to exercise the irreversible path.
+# Same schema as compiled artifacts: a reviewer can write or edit one directly.
+schema_version: '1.0'
+id: member.open_club_account
+version: 1
+status: draft
+title: Open a club sub-account for a member
+description: Open a club/certificate sub-account for <member_id>, funded from savings. Returns confirmation_number.
+app: { profile: cu-servicing, product: MbrSvc, variant: base }
+risk_class: irreversible
+requires:
+  session: session.sign_on
+  start_state: { text: MBR INQ - MEMBER INQUIRY, frame: main }
+inputs:
+  member_id: { type: string, description: 5-digit member number, pattern: '^\d{5}$' }
+  product:   { type: string, description: Product code, pattern: '^(HC|VC|CD12)$' }
+  amount:    { type: decimal, description: Opening deposit, pattern: '^\d+(\.\d{2})?$', sensitivity: financial }
+outputs:
+  confirmation_number: { type: string, description: Confirmation number shown after opening, sensitivity: internal }
+steps:
+- id: fill_member_number
+  intent: Enter the member number
+  action: fill
+  target: { description: Member Number textbox, frame: main, strategies: [
+      { by: anchor_text, text: Member Number, control: textbox }, { by: field_name, name: q1 } ] }
+  value: '{{inputs.member_id}}'
+  risk: reversible
+- id: click_search
+  intent: Open the member record
+  action: click
+  target: { description: Search button, frame: main, strategies: [ { by: role, role: button, name: Search } ] }
+  postcondition: { check: { text: MBR DTL - MEMBER DETAIL, frame: main } }
+  expected_outcomes: [member_not_found, access_denied, validation_error]
+  risk: reversible
+- id: click_open_sub_account
+  intent: Start the open-sub-account form
+  action: click
+  target: { description: Open Sub-Account link, frame: main, strategies: [
+      { by: role, role: link, name: Open Sub-Account }, { by: text, text: Open Sub-Account } ] }
+  postcondition: { check: { text: SHR OPN - OPEN SUB-ACCOUNT, frame: main } }
+  risk: reversible
+- id: select_product
+  intent: Choose the product
+  action: select
+  target: { description: Product drop-down, frame: main, strategies: [
+      { by: anchor_text, text: Product, control: combobox }, { by: field_name, name: p } ] }
+  value: '{{inputs.product}}'
+  risk: reversible
+- id: fill_opening_deposit
+  intent: Enter the opening deposit
+  action: fill
+  target: { description: Opening Deposit textbox, frame: main, strategies: [
+      { by: anchor_text, text: Opening Deposit, control: textbox }, { by: field_name, name: amt } ] }
+  value: '{{inputs.amount}}'
+  risk: reversible
+- id: click_continue
+  intent: Validate the form and go to review
+  action: click
+  target: { description: Continue button, frame: main, strategies: [ { by: role, role: button, name: Continue } ] }
+  postcondition: { check: { text: SHR OPN - REVIEW AND CONFIRM, frame: main } }
+  expected_outcomes: [validation_error]
+  risk: reversible
+- id: click_confirm_and_open
+  intent: Commit - opens the share and moves money
+  action: click
+  target: { description: Confirm & Open button, frame: main, strategies: [ { by: role, role: button, name: Confirm & Open } ] }
+  postcondition: { check: { text: SUB-ACCOUNT OPENED, frame: main } }
+  expected_outcomes: [validation_error]
+  risk: irreversible
+- id: read_confirmation_number
+  intent: Read the confirmation number
+  action: extract
+  target: { description: Confirmation number, frame: main, strategies: [ { by: labeled_value, label: 'Confirmation #' } ] }
+  output: confirmation_number
+  risk: read_only
+outcomes:
+- { code: member_not_found, description: No member exists with that number,
+    detect: { text: MBR-404, frame: main }, source: 'profile:cu-servicing#member_not_found' }
+- { code: access_denied, description: Operator is not authorized to view this member record,
+    detect: { text: SEC-403, frame: main }, source: 'profile:cu-servicing#access_denied' }
+- { code: validation_error, description: The application rejected an input,
+    detect: { text: 'ERR-\d{3}', frame: '*', regex: true }, capture_message: true,
+    source: 'profile:cu-servicing#validation_error' }
+success:
+  check: { text: SUB-ACCOUNT OPENED, frame: main }
+  outputs_present: [confirmation_number]
+provenance:
+  recorded_from_run: hand-authored
+  model: none
+  compiled_at: '2026-09-26T00:00:00Z'
+  compiler_version: hand
+  source_trace_sha256: none

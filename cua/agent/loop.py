@@ -49,8 +49,11 @@ class DiscoveryResult:
 
 class DiscoveryAgent:
     def __init__(self, driver: SurfaceDriver, actuator: Actuator, planner: Planner,
-                 log: RunLog, redactor: Redactor) -> None:
+                 log: RunLog, redactor: Redactor, handoff=None, max_handoffs: int = 2) -> None:
         self.driver, self.actuator, self.planner, self.log, self.redactor = driver, actuator, planner, log, redactor
+        self.handoff, self.max_handoffs, self._handoffs_used = handoff, max_handoffs, 0
+        if handoff is not None:
+            actuator.control_check = handoff.assert_automation
 
     # ------------------------------------------------------------------------------
     def run(self, cfg: DiscoveryConfig) -> DiscoveryResult:
@@ -92,6 +95,9 @@ class DiscoveryAgent:
 
             if call.name == "request_help":
                 trace.status = "needs_human"
+                if self._human_resumes(trace, call.input.get("reason", "model requested help")):
+                    feedback, failures = self._after_human(trace), 0
+                    continue
                 self._escalate(trace, call.input.get("reason", "model requested help"))
                 break
             if call.name == "done":
@@ -114,12 +120,20 @@ class DiscoveryAgent:
                 failures = 0 if step.status == "ok" else failures + 1
                 if self._repeating(trace):
                     trace.status = "stuck"
-                    self._escalate(trace, f"same action repeated {MAX_REPEATS} times without progress")
+                    reason = f"same action repeated {MAX_REPEATS} times without progress"
+                    if self._human_resumes(trace, reason):
+                        feedback, failures = self._after_human(trace), 0
+                        continue
+                    self._escalate(trace, reason)
                     break
 
             if failures >= MAX_CONSECUTIVE_FAILURES:
                 trace.status = "stuck"
-                self._escalate(trace, f"{failures} consecutive failed actions: {'; '.join(feedback)}")
+                reason = f"{failures} consecutive failed actions: {'; '.join(feedback)}"
+                if self._human_resumes(trace, reason):
+                    feedback, failures = self._after_human(trace), 0
+                    continue
+                self._escalate(trace, reason)
                 break
 
         self._finish(trace, outputs)
@@ -332,6 +346,32 @@ class DiscoveryAgent:
 
     def _where(self) -> dict[str, str]:
         return {f: (urlsplit(u).path or u) for f, u in self.driver.frame_urls().items()}
+
+    def _human_resumes(self, trace: DiscoveryTrace, reason: str) -> bool:
+        """Give the live session to a human; True if they hand it back for the agent to continue."""
+        if self.handoff is None or self._handoffs_used >= self.max_handoffs:
+            return False
+        self._handoffs_used += 1
+        decision = self.handoff.request({"kind": "discovery", "goal": trace.goal, "reason": reason,
+                                         "step": len(trace.steps), "location": self._where()})
+        trace.steps.append(TraceStep(
+            index=len(trace.steps) + 1, tool="human", why=decision.note or reason,
+            status="ok" if decision.action == "resume" else "failed",
+            error=None if decision.action == "resume" else f"handoff {decision.action}",
+            location_before=self._where(), location_after=self._where(),
+            human_actions=decision.human_actions))
+        if decision.action != "resume":
+            return False
+        self.handoff.resumed("agent continues after human help")
+        trace.status = "failed"            # provisional again; the loop decides the final status
+        return True
+
+    def _after_human(self, trace: DiscoveryTrace) -> list[str]:
+        acts = trace.steps[-1].human_actions
+        summary = "; ".join(f"{a.get('kind')} {a.get('text') or a.get('label') or a.get('path') or ''}".strip()
+                            for a in acts if a.get("kind") != "navigated") or "no recorded actions"
+        return [f"A human operator took over and handed back control. They did: {summary}. "
+                "Continue toward the goal from the CURRENT observation; do not repeat what they did."]
 
     def _escalate(self, trace: DiscoveryTrace, reason: str) -> None:
         """Write an intervention request. Step 5 wires this to a live operator handoff."""

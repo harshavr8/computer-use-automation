@@ -1,0 +1,37 @@
+{
+  "run_id": "replay-20260926T210515Z-784430",
+  "state": "awaiting_human",
+  "holder": "nobody",
+  "request": {
+    "kind": "replay",
+    "capability": "member.open_club_account",
+    "version": 1,
+    "step": "click_confirm_and_open",
+    "reason": "irreversible step needs approval: opens a share and moves money",
+    "needs_approval": true,
+    "screen": "[top /app] FIRST COMMUNITY CREDIT UNION MbrSvc 4.2.1 OPR: TELLER | [nav /nav] FUNCTIONS Member Inquiry Transactions Reports Sign Off | [main /members/12345/subacct/review] SHR OPN - REVIEW AND CONFIRM Verify the details below. Confirming will open the share and transfer funds. Member Number 12345 Product VC - VACATION CLUB Nicknam",
+    "completed_steps": [
+      "open_login",
+      "fill_operator_id",
+      "fill_password",
+      "click_sign_on",
+      "fill_member_number",
+      "click_search",
+      "click_open_sub_account",
+      "select_product",
+      "fill_opening_deposit",
+      "click_continue"
+    ],
+    "screenshot": "handoff-0.png",
+    "requested_at": "2026-09-26T21:05:20+00:00"
+  },
+  "history": [
+    {
+      "at": "2026-09-26T21:05:20+00:00",
+      "from": "automation",
+      "to": "awaiting_human",
+      "holder": "nobody",
+      "note": "irreversible step needs approval: opens a share and moves money"
+    }
+  ]
+}

@@ -64,6 +64,11 @@ class Compiler:
             raise CompileError(f"only successful discovery runs compile into capabilities (got {trace.status!r})")
         if trace.success is None:
             raise CompileError("trace has no verified success checkpoint")
+        if any(s.tool == "human" and s.status == "ok" for s in trace.steps):
+            raise CompileError(
+                "trace contains human-performed steps; their controls were never located and verified, so "
+                "they cannot be replayed. Re-run discovery (the human's actions show the path) or hand-author "
+                "those steps.")
         ok = [s for s in trace.steps if s.status == "ok" and s.action is not None]
         prelude, body = self._split_sign_on(ok)
         provenance = Provenance(

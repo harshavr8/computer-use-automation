@@ -1,0 +1,50 @@
+[
+  {
+    "kind": "click",
+    "frame": "nav",
+    "path": "/nav",
+    "tag": "a",
+    "input_type": "",
+    "field_name": "",
+    "label": "",
+    "text": "Member Inquiry",
+    "value": null,
+    "at": "2026-09-26T21:18:26+00:00"
+  },
+  {
+    "kind": "navigated",
+    "frame": "main",
+    "path": "/members/search",
+    "at": "2026-09-26T21:18:26+00:00"
+  },
+  {
+    "kind": "fill",
+    "frame": "main",
+    "path": "/members/search",
+    "tag": "input",
+    "input_type": "text",
+    "field_name": "q1",
+    "label": "Member Number:",
+    "text": "",
+    "value": "12345",
+    "at": "2026-09-26T21:18:31+00:00"
+  },
+  {
+    "kind": "click",
+    "frame": "main",
+    "path": "/members/search",
+    "tag": "input",
+    "input_type": "submit",
+    "field_name": "",
+    "label": "",
+    "text": "Search",
+    "value": null,
+    "at": "2026-09-26T21:18:31+00:00"
+  },
+  {
+    "kind": "navigated",
+    "frame": "main",
+    "path": "/members/12345",
+    "at": "2026-09-26T21:18:31+00:00"
+  }
+]

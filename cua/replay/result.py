@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 FailureCategory = Literal[
     "config_error", "input_invalid", "precondition_not_met", "session_failed", "target_not_found", "target_ambiguous",
     "postcondition_not_met", "app_error", "recovery_exhausted", "policy_violation",
-    "success_check_failed", "output_parse_error",
+    "success_check_failed", "output_parse_error", "resync_failed",
 ]
 
 
@@ -51,6 +51,19 @@ class RecoveryRecord(BaseModel):
     attempt: int
 
 
+class HandoffRecord(BaseModel):
+    """One human intervention: why, who, what they did, and where automation picked up."""
+    reason: str
+    step: str | None
+    decision: Literal["resume", "abort", "timeout"]
+    operator: str | None = None
+    approved: bool = False
+    note: str = ""
+    human_actions: list[dict[str, Any]] = Field(default_factory=list)
+    resumed_at_step: str | None = None
+    waited_s: int = 0
+
+
 class StepRecord(BaseModel):
     id: str
     capability: str
@@ -71,6 +84,7 @@ class ReplayResult(BaseModel):
     failure: Failure | None = None
     escalation: Escalation | None = None
     recoveries: list[RecoveryRecord] = Field(default_factory=list)
+    handoffs: list[HandoffRecord] = Field(default_factory=list)
     drift: list[str] = Field(default_factory=list)       # degraded locators: works today, review soon
     steps: list[StepRecord] = Field(default_factory=list)
     duration_ms: int = 0

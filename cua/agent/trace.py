@@ -47,6 +47,7 @@ class TraceStep(BaseModel):
     output: OutputDecl | None = None
     dialogs: list[dict] = Field(default_factory=list)
     error: str | None = None
+    human_actions: list[dict] = Field(default_factory=list)   # tool == "human": what the operator did
 
 
 class DiscoveryTrace(BaseModel):

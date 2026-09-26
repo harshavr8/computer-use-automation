@@ -25,6 +25,8 @@ class ReplayConfig:
     capabilities: str = "capabilities"
     evidence_dir: str = "evidence"
     headed: bool = False
+    handoff: bool = False
+    handoff_timeout_s: int = 900
 
 
 def replay_once(cfg: ReplayConfig, cap_id: str, inputs: dict[str, str], version: int | None = None,
@@ -32,10 +34,15 @@ def replay_once(cfg: ReplayConfig, cap_id: str, inputs: dict[str, str], version:
     store = CapabilityStore(cfg.capabilities)
     redactor = Redactor()
     log = RunLog(Path(cfg.evidence_dir), new_run_id(label), redactor)
-    driver = WebPlaywrightDriver.launch(cfg.base_url, headless=not cfg.headed)
+    # A human can only take over a browser they can see: handoff implies headed.
+    driver = WebPlaywrightDriver.launch(cfg.base_url, headless=not (cfg.headed or cfg.handoff))
     try:
         actuator = Actuator(driver, PolicyGate(Policy.load(cfg.policy)), log, redactor)
-        engine = ReplayEngine(driver, actuator, AppProfile.load(cfg.profile), store, log, redactor)
+        handoff = None
+        if cfg.handoff:
+            from ..control.handoff import HandoffController
+            handoff = HandoffController(driver, log, redactor, timeout_s=cfg.handoff_timeout_s)
+        engine = ReplayEngine(driver, actuator, AppProfile.load(cfg.profile), store, log, redactor, handoff=handoff)
         return engine.run(store.load(cap_id, version), inputs, approval=approval)
     finally:
         log.close()

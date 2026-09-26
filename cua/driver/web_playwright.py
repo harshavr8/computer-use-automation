@@ -68,6 +68,31 @@ _INDEX_JS = r"""
 }
 """
 
+# Injected into every frame of every page: reports what a *human* does while they hold the
+# session. Values of password fields never leave the page; everything else is redacted on log.
+_CAPTURE_JS = r"""
+(() => {
+  if (window.__cuaHooked) return; window.__cuaHooked = true;
+  const norm = s => (s || '').replace(/\s+/g, ' ').trim();
+  const describe = e => {
+    const t = (e.tagName || '').toLowerCase(), ty = (e.type || '').toLowerCase();
+    let label = e.getAttribute && e.getAttribute('aria-label') || (e.labels && e.labels[0] ? norm(e.labels[0].innerText) : '');
+    if (!label && e.closest) { const c = e.closest('td'); if (c && c.previousElementSibling) label = norm(c.previousElementSibling.innerText); }
+    const text = t === 'input' && ['submit','button','reset'].includes(ty) ? e.value : norm(e.innerText || '').slice(0, 80);
+    return { tag: t, input_type: ty, field_name: (e.getAttribute && e.getAttribute('name')) || '', label, text };
+  };
+  const send = (kind, e, value) => { try { window.__cuaHumanEvent({ kind, frame: window.name || 'top',
+      path: location.pathname, ...describe(e), value }); } catch (_) {} };
+  document.addEventListener('click', ev => {
+    const e = (ev.target.closest && ev.target.closest('a,button,input,select,textarea')) || ev.target;
+    if (e.tagName === 'SELECT' || (e.tagName === 'INPUT' && !['submit','button','reset','checkbox','radio'].includes((e.type||'').toLowerCase()))) return;
+    send('click', e, null); }, true);
+  document.addEventListener('change', ev => { const e = ev.target; if (!e || !e.tagName) return;
+    const secret = (e.type || '').toLowerCase() === 'password';
+    send(e.tagName === 'SELECT' ? 'select' : 'fill', e, secret ? '[SECRET]' : e.value); }, true);
+})();
+"""
+
 _CONTROL_TEXT_JS = r"""
 e => { const t = e.tagName.toLowerCase(); const ty = (e.type || '').toLowerCase();
   if (t === 'input' && ['submit','button','reset'].includes(ty)) return e.value;
@@ -104,6 +129,34 @@ class WebPlaywrightDriver:
         page.on("request", self._net_start)
         page.on("requestfinished", self._net_end)
         page.on("requestfailed", self._net_end)
+        self._capture_cb = None
+        try:
+            page.context.expose_binding("__cuaHumanEvent", self._on_capture)
+            page.context.add_init_script(_CAPTURE_JS)
+        except Exception:
+            pass                                  # binding already exposed on this context
+        page.on("framenavigated", self._on_navigated)
+
+    # ---- human action capture (used during handoff) -------------------------------------
+    def start_capture(self, callback) -> None:
+        self._capture_cb = callback
+        for f in self.page.frames:                # documents loaded before the init script existed
+            try:
+                f.evaluate(_CAPTURE_JS)
+            except Exception:
+                pass
+
+    def stop_capture(self) -> None:
+        self._capture_cb = None
+
+    def _on_capture(self, _source, payload) -> None:
+        if self._capture_cb:
+            self._capture_cb(payload)
+
+    def _on_navigated(self, frame) -> None:
+        if self._capture_cb:
+            from urllib.parse import urlsplit
+            self._capture_cb({"kind": "navigated", "frame": frame.name or "top", "path": urlsplit(frame.url).path})
 
     def _net_start(self, _req) -> None:
         self._inflight += 1

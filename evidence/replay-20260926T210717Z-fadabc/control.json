@@ -1,0 +1,32 @@
+{
+  "run_id": "replay-20260926T210717Z-fadabc",
+  "state": "awaiting_human",
+  "holder": "nobody",
+  "request": {
+    "kind": "replay",
+    "capability": "member.get_savings_balance",
+    "version": 1,
+    "step": "click_search",
+    "reason": "recovery_exhausted: expected transient_app_error to clear within 2 recoveries",
+    "needs_approval": false,
+    "screen": "[top /app] FIRST COMMUNITY CREDIT UNION MbrSvc 4.2.1 OPR: TELLER | [nav /nav] FUNCTIONS Member Inquiry Transactions Reports Sign Off | [main /members/12345] APPLICATION ERROR APP-500 UNHANDLED EXCEPTION IN MODULE MBRSVC.DLL Contact the help desk and reference the time of this error.",
+    "completed_steps": [
+      "open_login",
+      "fill_operator_id",
+      "fill_password",
+      "click_sign_on",
+      "fill_member_number"
+    ],
+    "screenshot": "handoff-0.png",
+    "requested_at": "2026-09-26T21:07:23+00:00"
+  },
+  "history": [
+    {
+      "at": "2026-09-26T21:07:23+00:00",
+      "from": "automation",
+      "to": "awaiting_human",
+      "holder": "nobody",
+      "note": "recovery_exhausted: expected transient_app_error to clear within 2 recoveries"
+    }
+  ]
+}

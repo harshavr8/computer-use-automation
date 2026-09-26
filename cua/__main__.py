@@ -44,10 +44,14 @@ def cmd_discover(args: argparse.Namespace) -> int:
 
     redactor = Redactor()
     log = RunLog(Path(args.evidence_dir), new_run_id("discovery"), redactor)
-    driver = WebPlaywrightDriver.launch(args.base_url, headless=not args.headed)
+    driver = WebPlaywrightDriver.launch(args.base_url, headless=not (args.headed or args.handoff))
     try:
         actuator = Actuator(driver, PolicyGate(Policy.load(args.policy)), log, redactor)
-        agent = DiscoveryAgent(driver, actuator, AnthropicPlanner(args.model), log, redactor)
+        handoff = None
+        if args.handoff:
+            from .control.handoff import HandoffController
+            handoff = HandoffController(driver, log, redactor, timeout_s=args.handoff_timeout)
+        agent = DiscoveryAgent(driver, actuator, AnthropicPlanner(args.model), log, redactor, handoff=handoff)
         result = agent.run(DiscoveryConfig(
             goal_template=args.goal, start_route=args.start, params=_kv(args.param),
             secrets={"MOCK_USER": "operator ID for sign-on", "MOCK_PASS": "password for sign-on"},
@@ -113,6 +117,14 @@ def _print_result(res, show_outputs: bool) -> None:
         print(f"escalated:  {res.escalation.reason} (step {res.escalation.step})")
     for r in res.recoveries:
         print(f"recovered:  {r.condition} at {r.step} via {r.action} (attempt {r.attempt})")
+    for h in res.handoffs:
+        who = f"human:{h.operator}" if h.operator else "nobody"
+        print(f"handoff:    {h.decision} by {who} at step {h.step}"
+              + (" (approved)" if h.approved else "") + (f" -> resumed at {h.resumed_at_step}" if h.resumed_at_step else ""))
+        for a in h.human_actions:
+            if a.get("kind") != "navigated":
+                print(f"   human:   {a.get('kind')} {a.get('text') or a.get('label') or ''} "
+                      f"{'= ' + str(a['value']) if a.get('value') else ''} [{a.get('frame')}]")
     for d in res.drift:
         print(f"drift:      {d}")
     print(f"steps:      {len(res.steps)} in {res.duration_ms} ms")
@@ -124,7 +136,8 @@ def cmd_replay(args: argparse.Namespace) -> int:
     from .safety.policy import Approval
 
     approval = Approval(approver=args.approve, scope=f"{args.capability} via CLI") if args.approve else None
-    cfg = ReplayConfig(base_url=args.base_url, headed=args.headed)
+    cfg = ReplayConfig(base_url=args.base_url, headed=args.headed, handoff=args.handoff,
+                       handoff_timeout_s=args.handoff_timeout)
     res = replay_once(cfg, args.capability, _kv(args.input), version=args.version, approval=approval)
     _print_result(res, args.show_outputs)
     return 0 if res.status in ("success", "business_outcome") else 1
@@ -147,6 +160,40 @@ def cmd_scenarios(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def _resolve_run(evidence_dir: Path, run: str) -> Path:
+    if run == "latest":
+        from .control.handoff import pending_handoffs
+        pending = pending_handoffs(evidence_dir)
+        if not pending:
+            raise SystemExit("no run is waiting for a human")
+        return Path(pending[-1]["dir"])
+    matches = [p for p in evidence_dir.iterdir() if p.is_dir() and p.name.startswith(run)] if evidence_dir.exists() else []
+    if len(matches) != 1:
+        raise SystemExit(f"run {run!r} matched {len(matches)} folders under {evidence_dir}")
+    return matches[0]
+
+
+def cmd_operator(args: argparse.Namespace) -> int:
+    from .control.handoff import pending_handoffs, send_command
+
+    evidence = Path(args.evidence_dir)
+    if args.action == "status":
+        pending = pending_handoffs(evidence)
+        if not pending:
+            print("no runs are waiting for a human")
+        for p in pending:
+            r = p.get("request", {})
+            print(f"{p['run_id']}\n  state:  {p['state']} (holder {p['holder']})\n  reason: {r.get('reason')}"
+                  f"\n  step:   {r.get('step')}\n  screen: {p['dir']}/{r.get('screenshot')}")
+        return 0
+    if not args.run or not args.as_:
+        raise SystemExit("usage: python -m cua operator {claim|done|abort} <run|latest> --as <operator>")
+    run_dir = _resolve_run(evidence, args.run)
+    send_command(run_dir, args.action, args.as_, approve=args.approve, note=args.note or "")
+    print(f"sent {args.action} to {run_dir.name}")
+    return 0
+
+
 def main() -> None:
     load_dotenv()
     p = argparse.ArgumentParser(prog="python -m cua")
@@ -166,6 +213,8 @@ def main() -> None:
     d.add_argument("--no-screenshots", action="store_true", help="send the model text only")
     d.add_argument("--reset-target", action="store_true", help="reset mock app data first (harness only)")
     d.add_argument("--show-outputs", action="store_true", help="print raw output values to the terminal")
+    d.add_argument("--handoff", action="store_true", help="when stuck, hand the live browser to a human operator")
+    d.add_argument("--handoff-timeout", type=int, default=900, help="seconds to wait for an operator")
     d.set_defaults(func=cmd_discover)
 
     c = sub.add_parser("compile", help="compile a discovery trace into capability artifacts")
@@ -185,6 +234,9 @@ def main() -> None:
     r.add_argument("--base-url", default="http://127.0.0.1:5001")
     r.add_argument("--headed", action="store_true")
     r.add_argument("--show-outputs", action="store_true")
+    r.add_argument("--handoff", action="store_true",
+                   help="on escalation or an unrecoverable failure, hand the live browser to a human")
+    r.add_argument("--handoff-timeout", type=int, default=900, help="seconds to wait for an operator")
     r.set_defaults(func=cmd_replay)
 
     sc = sub.add_parser("scenarios", help="replay suite with injected faults (writes evidence)")
@@ -192,6 +244,15 @@ def main() -> None:
     sc.add_argument("--base-url", default="http://127.0.0.1:5001")
     sc.add_argument("--headed", action="store_true")
     sc.set_defaults(func=cmd_scenarios)
+
+    o = sub.add_parser("operator", help="human operator: take over / hand back a paused run")
+    o.add_argument("action", choices=["status", "claim", "done", "abort"])
+    o.add_argument("run", nargs="?", help="run id (or unique prefix, or 'latest')")
+    o.add_argument("--as", dest="as_", help="your operator id, e.g. harry")
+    o.add_argument("--approve", action="store_true", help="done: approve the pending irreversible step")
+    o.add_argument("--note", default=None)
+    o.add_argument("--evidence-dir", default="evidence")
+    o.set_defaults(func=cmd_operator)
 
     args = p.parse_args()
     raise SystemExit(args.func(args))

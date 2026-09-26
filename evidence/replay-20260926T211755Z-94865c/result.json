@@ -1,0 +1,156 @@
+{
+  "run_id": "replay-20260926T211755Z-94865c",
+  "capability": "member.get_savings_balance",
+  "version": 1,
+  "status": "success",
+  "outputs": {
+    "savings_balance": "[FINANCIAL]"
+  },
+  "outcome": null,
+  "failure": null,
+  "escalation": null,
+  "recoveries": [
+    {
+      "condition": "transient_app_error",
+      "step": "click_search",
+      "action": "reload",
+      "attempt": 1
+    },
+    {
+      "condition": "transient_app_error",
+      "step": "click_search",
+      "action": "reload",
+      "attempt": 2
+    }
+  ],
+  "handoffs": [
+    {
+      "reason": "recovery_exhausted: expected transient_app_error to clear within 2 recoveries",
+      "step": "click_search",
+      "decision": "resume",
+      "operator": "harry",
+      "approved": false,
+      "note": "",
+      "human_actions": [
+        {
+          "kind": "click",
+          "frame": "nav",
+          "path": "/nav",
+          "tag": "a",
+          "input_type": "",
+          "field_name": "",
+          "label": "",
+          "text": "Member Inquiry",
+          "value": null,
+          "at": "2026-09-26T21:18:26+00:00"
+        },
+        {
+          "kind": "navigated",
+          "frame": "main",
+          "path": "/members/search",
+          "at": "2026-09-26T21:18:26+00:00"
+        },
+        {
+          "kind": "fill",
+          "frame": "main",
+          "path": "/members/search",
+          "tag": "input",
+          "input_type": "text",
+          "field_name": "q1",
+          "label": "Member Number:",
+          "text": "",
+          "value": "12345",
+          "at": "2026-09-26T21:18:31+00:00"
+        },
+        {
+          "kind": "click",
+          "frame": "main",
+          "path": "/members/search",
+          "tag": "input",
+          "input_type": "submit",
+          "field_name": "",
+          "label": "",
+          "text": "Search",
+          "value": null,
+          "at": "2026-09-26T21:18:31+00:00"
+        },
+        {
+          "kind": "navigated",
+          "frame": "main",
+          "path": "/members/12345",
+          "at": "2026-09-26T21:18:31+00:00"
+        }
+      ],
+      "resumed_at_step": "read_savings_balance",
+      "waited_s": 41
+    }
+  ],
+  "drift": [],
+  "steps": [
+    {
+      "id": "open_login",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": null,
+      "locator_rank": null,
+      "degraded": false,
+      "duration_ms": 388
+    },
+    {
+      "id": "fill_operator_id",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Operator ID'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 101
+    },
+    {
+      "id": "fill_password",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Password'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 110
+    },
+    {
+      "id": "click_sign_on",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "role=button['Sign On']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 521
+    },
+    {
+      "id": "fill_member_number",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "textbox after 'Member Number'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 87
+    },
+    {
+      "id": "click_search",
+      "capability": "member.get_savings_balance",
+      "status": "failed",
+      "locator": "role=button['Search']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 0
+    },
+    {
+      "id": "read_savings_balance",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "cell['REGULAR SAVINGS' x 'Balance']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 82
+    }
+  ],
+  "duration_ms": 45260,
+  "evidence_dir": "evidence/replay-20260926T211755Z-94865c"
+}

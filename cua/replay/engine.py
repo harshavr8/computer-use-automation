@@ -30,7 +30,7 @@ from ..runtime.actuator import Actuator
 from ..safety.policy import Approval
 from ..safety.redact import Redactor
 from .result import (
-    Escalation, Failure, Outcome, RecoveryRecord, ReplayResult, StepRecord,
+    Escalation, Failure, HandoffRecord, Outcome, RecoveryRecord, ReplayResult, StepRecord,
 )
 
 _TEMPLATE = re.compile(r"\{\{inputs\.([A-Za-z_][A-Za-z0-9_]*)\}\}")
@@ -53,8 +53,8 @@ class _Hard(_Stop):
 
 
 class _Escalate(_Stop):
-    def __init__(self, reason: str, step: str | None) -> None:
-        self.reason, self.step = reason, step
+    def __init__(self, reason: str, step: str | None, needs_approval: bool = False) -> None:
+        self.reason, self.step, self.needs_approval = reason, step, needs_approval
 
 
 class _Restart(Exception):
@@ -63,9 +63,15 @@ class _Restart(Exception):
 
 class ReplayEngine:
     def __init__(self, driver: SurfaceDriver, actuator: Actuator, profile: AppProfile, store: CapabilityStore,
-                 log: RunLog, redactor: Redactor, max_restarts: int = 1) -> None:
+                 log: RunLog, redactor: Redactor, max_restarts: int = 1, handoff=None, max_handoffs: int = 2) -> None:
         self.driver, self.actuator, self.profile, self.store = driver, actuator, profile, store
         self.log, self.redactor, self.max_restarts = log, redactor, max_restarts
+        self.handoff, self.max_handoffs = handoff, max_handoffs
+        self._handoffs: list[HandoffRecord] = []
+        self._step_approvals: dict[str, Approval] = {}
+        self._executed_irreversible: set[tuple[str, int]] = set()
+        if handoff is not None:
+            actuator.control_check = handoff.assert_automation
         self._recoveries: list[RecoveryRecord] = []
         self._records: list[StepRecord] = []
         self._drift: list[str] = []
@@ -85,10 +91,14 @@ class ReplayEngine:
         try:
             self._preflight(cap)
             self._validate_inputs(cap, inputs)
+            pos: int | None = None                   # None = establish the start state first
+            outputs: dict[str, str] = {}
             while True:
                 try:
-                    self._ensure_start_state(cap)
-                    outputs = self._execute(cap, inputs, approval)
+                    if pos is None:
+                        self._ensure_start_state(cap)
+                        pos = 0
+                    self._execute(cap, inputs, approval, start=pos, outputs=outputs)
                     self._verify_success(cap, inputs, outputs)
                     result.status, result.outputs = "success", outputs
                     break
@@ -99,6 +109,9 @@ class ReplayEngine:
                                             expected="session to stay valid after re-sign-on",
                                             observed="session expired again", detail={"restarts": restarts}))
                     self.log.event("replay_restart", reason="session re-established", attempt=restarts)
+                    pos, outputs = None, {}
+                except (_Hard, _Escalate) as stop:
+                    pos = self._hand_to_human(cap, stop, inputs)   # re-raises if no human resumes
         except _Business as b:
             result.status, result.outcome = "business_outcome", b.outcome
         except _Hard as h:
@@ -110,6 +123,7 @@ class ReplayEngine:
             result.escalation = Escalation(reason=e.reason, step=e.step, request_file=self._intervention(cap, e))
 
         result.recoveries, result.steps, result.drift = self._recoveries, self._records, self._drift
+        result.handoffs = self._handoffs
         result.duration_ms = int((time.monotonic() - t0) * 1000)
         self.log.write_json("result.json", result.model_dump(mode="json"))
         self.log.event("replay_end", status=result.status,
@@ -177,11 +191,15 @@ class ReplayEngine:
                                 observed=self._observed()))
 
     # ---- steps ------------------------------------------------------------------------------
-    def _execute(self, cap: Capability, inputs: dict[str, str], approval: Approval | None) -> dict[str, str]:
-        outputs: dict[str, str] = {}
-        for step in cap.steps:
+    def _execute(self, cap: Capability, inputs: dict[str, str], approval: Approval | None,
+                 start: int = 0, outputs: dict[str, str] | None = None) -> dict[str, str]:
+        outputs = {} if outputs is None else outputs
+        for idx in range(start, len(cap.steps)):
+            step = cap.steps[idx]
             t0 = time.monotonic()
-            self._run_step(cap, step, inputs, approval, outputs)
+            self._run_step(cap, step, inputs, self._step_approvals.get(step.id, approval), outputs)
+            if step.risk == "irreversible":
+                self._executed_irreversible.add((cap.id, idx))
             rec = next(r for r in reversed(self._records) if r.id == step.id and r.capability == cap.id)
             rec.duration_ms = int((time.monotonic() - t0) * 1000)
         return outputs
@@ -209,7 +227,7 @@ class ReplayEngine:
                 # a recovery ran; try again (bounded by that recovery's max_attempts)
 
         if out.status == "needs_approval":
-            raise _Escalate(f"irreversible step needs approval: {out.decision.reason}", step.id)
+            raise _Escalate(f"irreversible step needs approval: {out.decision.reason}", step.id, needs_approval=True)
         if out.status in ("denied", "left_allowlist"):
             reason = out.violation.reason if out.violation else out.decision.reason
             raise _Hard(Failure(category="policy_violation", step=step.id, expected="action inside the allowlist",
@@ -302,6 +320,72 @@ class ReplayEngine:
                 raise _Escalate("session expired after an irreversible step; state must be checked by a human",
                                 step.id)
             raise _Restart()
+
+    # ---- human handoff -----------------------------------------------------------------------
+    _HANDOFF_ELIGIBLE = {"target_not_found", "target_ambiguous", "postcondition_not_met", "recovery_exhausted",
+                         "app_error"}
+
+    def _hand_to_human(self, cap: Capability, stop: _Stop, inputs: dict[str, str]) -> int:
+        """Pause, let a human work in the same session, then return the step index to resume at."""
+        step_id = stop.failure.step if isinstance(stop, _Hard) else stop.step    # type: ignore[union-attr]
+        idx = next((i for i, s in enumerate(cap.steps) if s.id == step_id), None)
+        eligible = (self.handoff is not None and idx is not None and len(self._handoffs) < self.max_handoffs
+                    and (isinstance(stop, _Escalate) or stop.failure.category in self._HANDOFF_ELIGIBLE))  # type: ignore[union-attr]
+        if not eligible:
+            raise stop
+        reason = stop.reason if isinstance(stop, _Escalate) else (
+            f"{stop.failure.category}: expected {stop.failure.expected}")                  # type: ignore[union-attr]
+        decision = self.handoff.request({
+            "kind": "replay", "capability": cap.id, "version": cap.version, "step": step_id, "reason": reason,
+            "needs_approval": isinstance(stop, _Escalate) and stop.needs_approval,
+            "screen": self._observed(), "completed_steps": [r.id for r in self._records if r.status == "ok"],
+        })
+        record = HandoffRecord(reason=reason, step=step_id, decision=decision.action, operator=decision.operator,
+                               approved=decision.approve, note=decision.note, human_actions=decision.human_actions,
+                               waited_s=decision.waited_s)
+        self._handoffs.append(record)
+        if decision.action != "resume":
+            raise stop
+
+        if decision.approve and isinstance(stop, _Escalate) and stop.needs_approval:
+            self._step_approvals[cap.steps[idx].id] = Approval(
+                approver=f"human:{decision.operator}", scope=f"{cap.id}:{cap.steps[idx].id}")
+        resume = self._resync(cap, idx, inputs)
+        if resume is None:
+            self.handoff.resumed("could not re-sync after handoff")
+            raise _Hard(Failure(category="resync_failed", step=step_id,
+                                expected="a recorded checkpoint (or the start state) visible after the handoff",
+                                observed=self._observed()))
+        record.resumed_at_step = cap.steps[resume].id if resume < len(cap.steps) else "(success check)"
+        self.log.event("resync", resume_at=record.resumed_at_step, after_handoff=len(self._handoffs))
+        self.handoff.resumed(f"resuming at {record.resumed_at_step}")
+        return resume
+
+    def _resync(self, cap: Capability, failed: int, inputs: dict[str, str]) -> int | None:
+        """Where is the screen now? Resume after the latest step whose postcondition is visible.
+
+        1. The human finished work past the failure: newest visible postcondition at/after it.
+        2. The human restored an earlier screen: newest visible postcondition before it (redo from there).
+        3. Otherwise the start state.
+        Never resume at or before an irreversible step that already ran: that would repeat it.
+        """
+        resume: int | None = None
+        for k in range(len(cap.steps) - 1, failed - 1, -1):
+            post = cap.steps[k].postcondition
+            if post and self._visible(post.check, inputs):
+                resume = k + 1
+                break
+        if resume is None:
+            for k in range(failed - 1, -1, -1):
+                post = cap.steps[k].postcondition
+                if post and self._visible(post.check, inputs):
+                    resume = k + 1
+                    break
+        if resume is None and (cap.requires.start_state is None or self._visible(cap.requires.start_state, inputs)):
+            resume = 0
+        if resume is None or any(c == cap.id and i >= resume for c, i in self._executed_irreversible):
+            return None
+        return resume
 
     # ---- success / outputs ------------------------------------------------------------------
     def _verify_success(self, cap: Capability, inputs: dict[str, str], outputs: dict[str, str]) -> None:

@@ -1,0 +1,82 @@
+{
+  "run_id": "replay-20260926T211327Z-96d89a",
+  "capability": "member.get_savings_balance",
+  "version": 1,
+  "status": "success",
+  "outputs": {
+    "savings_balance": "[FINANCIAL]"
+  },
+  "outcome": null,
+  "failure": null,
+  "escalation": null,
+  "recoveries": [],
+  "handoffs": [],
+  "drift": [],
+  "steps": [
+    {
+      "id": "open_login",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": null,
+      "locator_rank": null,
+      "degraded": false,
+      "duration_ms": 393
+    },
+    {
+      "id": "fill_operator_id",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Operator ID'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 100
+    },
+    {
+      "id": "fill_password",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Password'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 108
+    },
+    {
+      "id": "click_sign_on",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "role=button['Sign On']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 508
+    },
+    {
+      "id": "fill_member_number",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "textbox after 'Member Number'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 86
+    },
+    {
+      "id": "click_search",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "role=button['Search']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 416
+    },
+    {
+      "id": "read_savings_balance",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "cell['REGULAR SAVINGS' x 'Balance']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 78
+    }
+  ],
+  "duration_ms": 1727,
+  "evidence_dir": "evidence/replay-20260926T211327Z-96d89a"
+}

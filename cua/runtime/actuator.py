@@ -48,10 +48,13 @@ class Actuator:
         self.driver, self.gate, self.log, self.redactor = driver, gate, log, redactor
         self.secrets = secrets or SecretStore()
         self.last_extracted: str | None = None  # raw, in-memory only
+        self.control_check = None                # set by a HandoffController: lease enforcement
 
     def do(self, action: Action, approval: Approval | None = None, step_id: str | None = None,
            output_sensitivity: str | None = None) -> ActOutcome:
         """output_sensitivity: for extract, register the value as sensitive BEFORE it is logged."""
+        if self.control_check is not None:
+            self.control_check()                 # raises ControlError if a human holds the session
         resolved: Resolved | None = None
         if action.target is not None:
             try:

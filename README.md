@@ -73,6 +73,29 @@ Recoveries (dismissed notices, reloaded error pages, re-sign-on after session ex
 
 This replays the capability 10 times, injecting a different fault each run through the mock app's admin endpoint (a harness action, never an agent action). It covers success, a new input, not-found, access-denied, app validation, bad input, a notice dialog, a transient 500, session expiry, and a persistent 500. Each run writes its own `evidence/replay-<scenario>-*/` folder, and the command prints expected vs. actual status for each scenario.
 
+## Human handoff (take over the live session)
+
+Add `--handoff` to `replay` or `discover`. When a run escalates or hits an unrecoverable failure, it pauses and keeps the browser open (handoff implies `--headed`). It prints a banner with the exact commands to run. From a second terminal:
+
+    python -m cua operator status                        # what's waiting, why, and a screenshot path
+    python -m cua operator claim latest --as harry       # you now hold the session; automation cannot act
+    #   ... work in the open browser window; your clicks and entries are recorded ...
+    python -m cua operator done latest --as harry        # hand back; automation re-syncs and continues
+    python -m cua operator done latest --as harry --approve   # or: approve a pending irreversible step
+    python -m cua operator abort latest --as harry --note "..."
+
+After a handoff, replay resumes after the newest recorded checkpoint visible on screen, and it never repeats an irreversible step. Discovery continues with a note to the model describing what the human did.
+
+Try it:
+
+    python -m cua replay member.open_club_account --handoff \
+        --input member_id=12345 --input product=VC --input amount=40.00
+
+`member.open_club_account` is a hand-authored capability. Copy it into the store first:
+
+    mkdir -p capabilities/member.open_club_account
+    cp tests/fixtures/member.open_club_account.v1.yaml capabilities/member.open_club_account/v1.yaml
+
 ## Layout
 
 | Path | Contents |
@@ -86,6 +109,7 @@ This replays the capability 10 times, injecting a different fault each run throu
 | `cua/agent/` | Discovery loop, tool schemas, prompt, and planner (Anthropic, or scripted for tests) |
 | `cua/artifact/` | Capability schema, compiler (trace to artifact), and versioned store |
 | `cua/replay/` | Deterministic replay engine, result contract, scenario suite |
+| `cua/control/` | Handoff controller: control lease, operator command inbox, human-action capture |
 | `profiles/` | App profiles: per-product known conditions (business outcomes, recoveries) |
 | `capabilities/` | Compiled capability artifacts (`<id>/v<N>.yaml`) |
 | `policy.yaml` | Guardrail configuration |
