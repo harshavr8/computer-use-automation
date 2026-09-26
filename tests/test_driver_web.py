@@ -179,6 +179,7 @@ def test_screenshot_masks_sensitive_text(rig, tmp_path):
     drv, act, _ = rig
     sign_in(act)
     open_member(act, "12345")
+    assert drv.wait_for_text("MBR DTL - MEMBER DETAIL", "main", 3000)   # checkpoint, not timing
     masked = drv.screenshot(tmp_path / "masked.png", SCREENSHOT_MASKS)
     plain = drv.screenshot(tmp_path / "plain.png", [])
     assert masked.stat().st_size > 0 and masked.read_bytes() != plain.read_bytes()

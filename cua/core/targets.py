@@ -65,8 +65,15 @@ class TableCellStrategy(_Strict):
     column_header: str
 
 
+class LabeledValueStrategy(_Strict):
+    """The value cell next to a label cell ("Name:" | "JANE Q SAMPLE"). For extraction."""
+    by: Literal["labeled_value"] = "labeled_value"
+    label: str
+
+
 Strategy = Annotated[
-    Union[RoleStrategy, AnchorTextStrategy, TextStrategy, FieldNameStrategy, TableCellStrategy],
+    Union[RoleStrategy, AnchorTextStrategy, TextStrategy, FieldNameStrategy, TableCellStrategy,
+          LabeledValueStrategy],
     Field(discriminator="by"),
 ]
 
@@ -94,4 +101,6 @@ def strategy_label(s: Strategy) -> str:
             return f"field_name={s.name!r}"
         case TableCellStrategy():
             return f"cell[{s.row_key!r} x {s.column_header!r}]"
+        case LabeledValueStrategy():
+            return f"value after label {s.label!r}"
     return repr(s)

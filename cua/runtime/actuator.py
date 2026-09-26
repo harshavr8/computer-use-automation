@@ -47,8 +47,11 @@ class Actuator:
     ) -> None:
         self.driver, self.gate, self.log, self.redactor = driver, gate, log, redactor
         self.secrets = secrets or SecretStore()
+        self.last_extracted: str | None = None  # raw, in-memory only
 
-    def do(self, action: Action, approval: Approval | None = None, step_id: str | None = None) -> ActOutcome:
+    def do(self, action: Action, approval: Approval | None = None, step_id: str | None = None,
+           output_sensitivity: str | None = None) -> ActOutcome:
+        """output_sensitivity: for extract, register the value as sensitive BEFORE it is logged."""
         resolved: Resolved | None = None
         if action.target is not None:
             try:
@@ -76,6 +79,9 @@ class Actuator:
             value = action.value
 
         extracted = self.driver.perform(action, resolved, value)
+        self.last_extracted = extracted
+        if extracted and output_sensitivity in ("pii", "financial"):
+            self.redactor.register(extracted, output_sensitivity)
         dialogs = self.driver.drain_dialogs()
         self.log.event(
             "action", step=step_id, action=action.describe(), risk=decision.risk,

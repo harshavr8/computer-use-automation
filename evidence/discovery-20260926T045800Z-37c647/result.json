@@ -1,0 +1,9 @@
+{
+  "status": "success",
+  "outcome_code": null,
+  "steps": 7,
+  "outputs": {
+    "savings_balance": "[FINANCIAL]"
+  },
+  "summary": "Looked up member 12345 and extracted their savings_balance from the REGULAR SAVINGS row on the Member Detail screen."
+}

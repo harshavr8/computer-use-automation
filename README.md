@@ -22,6 +22,26 @@ Browser tests start their own copy of the mock app on a random port. If Chromium
 
 The probe signs on through the policy-guarded actuator, opens a member, and prints every control the agent would see, frame by frame, with its validated locator candidates. It writes a masked screenshot and the redacted event log to `probe_out/`.
 
+## Discovery run (needs an Anthropic API key)
+
+    cp .env.example .env        # then paste your key into ANTHROPIC_API_KEY
+    python -m mock_app --port 5001                                  # terminal 1
+    python -m cua discover --headed --reset-target \
+        --goal "Look up member {member_id} and read their current savings balance" \
+        --param member_id=12345                                     # terminal 2
+
+The model drives the browser through the policy-guarded actuator. Each run writes to `evidence/discovery-<timestamp>/`:
+
+| File | Contents |
+|---|---|
+| `events.jsonl` | Redacted log of model decisions, policy verdicts, and actions |
+| `trace.json` | The structured recording the compiler turns into a capability |
+| `result.json` | Status and outputs (sensitive values redacted) |
+| `final.png` | Masked screenshot at the end of the run |
+| `intervention.json` / `.png` | Only written if the run escalated to a human |
+
+`evidence/` is committed on purpose; the brief asks for it. Delete throwaway runs before committing.
+
 ## Layout
 
 | Path | Contents |
@@ -32,4 +52,5 @@ The probe signs on through the policy-guarded actuator, opens a member, and prin
 | `cua/safety/` | Policy gate (allowlist and risk classes) and redactor |
 | `cua/runtime/actuator.py` | The only path from decide to act: resolve, gate, act, verify location, log |
 | `cua/evidence/` | Redacted JSONL run log |
+| `cua/agent/` | Discovery loop, tool schemas, prompt, and planner (Anthropic, or scripted for tests) |
 | `policy.yaml` | Guardrail configuration |

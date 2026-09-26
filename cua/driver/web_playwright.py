@@ -22,8 +22,8 @@ from playwright.sync_api import Dialog, Frame, Locator, Page, sync_playwright
 from ..core.actions import Action
 from ..core.observation import DialogEvent, ElementInfo, FrameView, Observation
 from ..core.targets import (
-    AnchorTextStrategy, FieldNameStrategy, RoleStrategy, Strategy, TableCellStrategy,
-    Target, TextStrategy,
+    AnchorTextStrategy, FieldNameStrategy, LabeledValueStrategy, RoleStrategy, Strategy,
+    TableCellStrategy, Target, TextStrategy,
 )
 from .base import FrameNotFound, Resolved, StrategyCheck, TargetAmbiguous, TargetNotFound
 
@@ -98,7 +98,20 @@ class WebPlaywrightDriver:
         self._dialogs: list[DialogEvent] = []
         self._pw = None
         self._browser = None
+        self._inflight = 0
+        self._last_net = time.monotonic()
         page.on("dialog", self._on_dialog)
+        page.on("request", self._net_start)
+        page.on("requestfinished", self._net_end)
+        page.on("requestfailed", self._net_end)
+
+    def _net_start(self, _req) -> None:
+        self._inflight += 1
+        self._last_net = time.monotonic()
+
+    def _net_end(self, _req) -> None:
+        self._inflight = max(0, self._inflight - 1)
+        self._last_net = time.monotonic()
 
     # ---- lifecycle ------------------------------------------------------------
     @classmethod
@@ -220,6 +233,12 @@ class WebPlaywrightDriver:
                 loc = frame.locator(f"xpath={anchor}/following::{_CONTROL_XPATH[s.control]}[1]")
             case TableCellStrategy():
                 return self._locate_cell(frame, s)
+            case LabeledValueStrategy():
+                t = strip_colon(s.label)
+                cell = "*[self::td or self::th]"
+                loc = frame.locator(
+                    f"xpath=//{cell}[normalize-space(.)={xpath_literal(t)} or normalize-space(.)={xpath_literal(t + ':')}]"
+                    f"/following-sibling::{cell}[1]")
             case _:
                 return None, 0
         return loc, loc.count()
@@ -299,13 +318,24 @@ class WebPlaywrightDriver:
         self._settle()
         return result
 
-    def _settle(self) -> None:
-        """Best-effort quiescence after an action. Correctness comes from checkpoints."""
-        try:
-            self.page.wait_for_load_state("load", timeout=10_000)
-            self.page.wait_for_load_state("networkidle", timeout=3_000)
-        except Exception:
-            pass
+    def _settle(self, quiet_ms: int = 300, max_ms: int = 10_000) -> None:
+        """Best-effort quiescence: no requests in flight for `quiet_ms`, then every frame loaded.
+
+        wait_for_load_state() alone is racy here: it returns immediately if the state was
+        already reached *before* a click's navigation starts (common with iframe targets).
+        Correctness still comes from checkpoints; this only makes observations less noisy.
+        """
+        deadline = time.monotonic() + max_ms / 1000
+        self.page.wait_for_timeout(50)                      # let the action's requests start
+        while time.monotonic() < deadline:
+            if self._inflight == 0 and (time.monotonic() - self._last_net) * 1000 >= quiet_ms:
+                break
+            self.page.wait_for_timeout(50)
+        for f in self.page.frames:
+            try:
+                f.wait_for_load_state("load", timeout=max(1, int((deadline - time.monotonic()) * 1000)))
+            except Exception:
+                pass
 
     # ---- state probes -----------------------------------------------------------------
     def text_visible(self, text: str, frame: str | None = None, regex: bool = False) -> bool:
@@ -337,9 +367,33 @@ class WebPlaywrightDriver:
             self.page.wait_for_timeout(150)
         return False
 
+    def locate_text(self, text: str) -> tuple[bool, str | None]:
+        """Is `text` visible anywhere, and in which frame? (None = top level)."""
+        for name, frame in self._named_frames():
+            try:
+                loc = frame.get_by_text(text)
+                for i in range(min(loc.count(), 5)):
+                    if loc.nth(i).is_visible():
+                        return True, name
+            except Exception:
+                continue
+        return False, None
+
+    def snapshot_image(self) -> bytes:
+        """Viewport JPEG for the model. Never written to disk by the driver."""
+        return self.page.screenshot(type="jpeg", quality=60, full_page=False)
+
     def screenshot(self, path: Path, mask_patterns: list[str]) -> Path:
         """Full-page screenshot with sensitive text boxed out *before* it hits disk."""
         masks = [f.get_by_text(re.compile(p)) for _, f in self._named_frames() for p in mask_patterns]
         path.parent.mkdir(parents=True, exist_ok=True)
-        self.page.screenshot(path=str(path), full_page=True, mask=masks, mask_color="#000000")
+        for attempt in range(3):
+            try:
+                self.page.screenshot(path=str(path), full_page=True, mask=masks, mask_color="#000000")
+                return path
+            except Exception as exc:        # a frame navigated mid-capture: settle and retry
+                if "context was destroyed" not in str(exc) or attempt == 2:
+                    raise
+                self._settle()
+                masks = [f.get_by_text(re.compile(p)) for _, f in self._named_frames() for p in mask_patterns]
         return path
