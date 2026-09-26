@@ -42,6 +42,16 @@ The model drives the browser through the policy-guarded actuator. Each run write
 
 `evidence/` is committed on purpose; the brief asks for it. Delete throwaway runs before committing.
 
+## Compile the trace into a capability
+
+    python -m cua compile evidence/<discovery-run>/trace.json --id member.get_savings_balance
+
+This writes versioned, reviewable YAML artifacts:
+- `capabilities/session.sign_on/v1.yaml`: the sign-on, split out and shared by every capability
+- `capabilities/member.get_savings_balance/v1.yaml`: the business flow
+
+The command prints the compiler's review notes and the agent-facing tool contract. Recompiling an identical flow does not create a new version.
+
 ## Layout
 
 | Path | Contents |
@@ -53,4 +63,7 @@ The model drives the browser through the policy-guarded actuator. Each run write
 | `cua/runtime/actuator.py` | The only path from decide to act: resolve, gate, act, verify location, log |
 | `cua/evidence/` | Redacted JSONL run log |
 | `cua/agent/` | Discovery loop, tool schemas, prompt, and planner (Anthropic, or scripted for tests) |
+| `cua/artifact/` | Capability schema, compiler (trace to artifact), and versioned store |
+| `profiles/` | App profiles: per-product known conditions (business outcomes, recoveries) |
+| `capabilities/` | Compiled capability artifacts (`<id>/v<N>.yaml`) |
 | `policy.yaml` | Guardrail configuration |

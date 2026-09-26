@@ -70,6 +70,30 @@ def cmd_discover(args: argparse.Namespace) -> int:
     return 0 if t.status in ("success", "business_outcome") else 1
 
 
+def cmd_compile(args: argparse.Namespace) -> int:
+    from .artifact.compiler import CompileError, Compiler, load_trace
+    from .artifact.profile import AppProfile
+    from .artifact.store import CapabilityStore
+
+    trace, raw = load_trace(args.trace)
+    try:
+        caps = Compiler(AppProfile.load(args.profile), variant=args.variant).compile(
+            trace, raw, args.id, title=args.title)
+    except CompileError as exc:
+        print(f"compile failed: {exc}", file=sys.stderr)
+        return 1
+    store = CapabilityStore(args.out)
+    for cap in caps:
+        path, created = store.save(cap)
+        state = "written" if created else "unchanged (identical to latest version)"
+        print(f"{cap.id:32} -> {path}  [{state}]")
+        for note in cap.review:
+            print(f"    {note.severity:4} {note.step or '':22} {note.note}")
+    print("\nAgent-facing contract:")
+    print(json.dumps(caps[-1].tool_contract(), indent=2))
+    return 0
+
+
 def main() -> None:
     load_dotenv()
     p = argparse.ArgumentParser(prog="python -m cua")
@@ -90,6 +114,15 @@ def main() -> None:
     d.add_argument("--reset-target", action="store_true", help="reset mock app data first (harness only)")
     d.add_argument("--show-outputs", action="store_true", help="print raw output values to the terminal")
     d.set_defaults(func=cmd_discover)
+
+    c = sub.add_parser("compile", help="compile a discovery trace into capability artifacts")
+    c.add_argument("trace", help="path to evidence/<run>/trace.json")
+    c.add_argument("--id", required=True, help="capability id, e.g. member.get_savings_balance")
+    c.add_argument("--title", default=None)
+    c.add_argument("--profile", default="profiles/cu-servicing.yaml")
+    c.add_argument("--variant", default="base")
+    c.add_argument("--out", default="capabilities")
+    c.set_defaults(func=cmd_compile)
 
     args = p.parse_args()
     raise SystemExit(args.func(args))

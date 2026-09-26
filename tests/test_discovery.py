@@ -198,3 +198,16 @@ def test_the_real_runs_done_call_gets_actionable_feedback(run_agent):
     assert "sensitive data value" in first.error
     assert "several table cells" in second.error
     assert res.trace.status == "success"
+
+
+def test_scripted_discovery_compiles_into_valid_capabilities(run_agent, tmp_path):
+    from cua.artifact.compiler import Compiler, load_trace
+    from cua.artifact.profile import AppProfile
+    from cua.artifact.store import CapabilityStore
+
+    res = run_agent(SIGN_ON + SEARCH + [EXTRACT, DONE], {"member_id": "12345"})
+    trace, raw = load_trace(res.evidence_dir / "trace.json")      # the redacted file on disk
+    caps = Compiler(AppProfile.load("profiles/cu-servicing.yaml")).compile(trace, raw, "member.get_savings_balance")
+    store = CapabilityStore(tmp_path)
+    assert [store.save(c)[1] for c in caps] == [True, True]
+    assert store.load("member.get_savings_balance").steps[-1].output == "savings_balance"

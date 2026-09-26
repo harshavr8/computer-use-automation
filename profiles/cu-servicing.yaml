@@ -1,0 +1,58 @@
+# App profile for the "MbrSvc" member-servicing product (the mock target).
+# Human-written and reviewed once per product. Shared by every capability and every
+# tenant running this product; tenant-specific differences go in overrides, not here.
+profile: cu-servicing
+product: MbrSvc
+
+session:
+  sign_on_capability: session.sign_on
+  signed_in: { text: "OPR:", frame: null }          # header shows the signed-on operator
+
+conditions:
+  # --- business outcomes: legitimate results the caller must handle ---------------------
+  - id: member_not_found
+    category: business
+    description: No member exists with that number
+    detect: { text: "MBR-404", frame: main }
+    on_routes: [/members/search]
+    result_code: member_not_found
+  - id: access_denied
+    category: business
+    description: Operator is not authorized to view this member record
+    detect: { text: "SEC-403", frame: main }
+    on_routes: [/members/search, /members/*]
+    result_code: access_denied
+  - id: validation_error
+    category: business
+    description: The application rejected an input (message returned to caller)
+    detect: { text: "ERR-\\d{3}", frame: "*", regex: true }
+    result_code: validation_error
+    capture_message: true
+
+  # --- recoverable: app weather, handled without the caller noticing ---------------------
+  - id: system_notice
+    category: recoverable
+    description: Maintenance notice overlay that must be dismissed
+    detect: { text: "System Notice", frame: main }
+    recovery:
+      kind: click
+      target:
+        description: System Notice OK button
+        frame: main
+        strategies: [ { by: role, role: button, name: OK } ]
+  - id: transient_app_error
+    category: recoverable
+    description: Transient server error page; retry the step
+    detect: { text: "APP-5\\d\\d", frame: "*", regex: true }
+    recovery: { kind: retry_step, max_attempts: 2, backoff_ms: 750 }
+  - id: session_expired
+    category: recoverable
+    description: Idle session expired; sign on again and resume
+    detect: { text: "SGN-009", frame: "*" }
+    recovery: { kind: resign_on, max_attempts: 1 }
+
+  # --- hard: stop and surface a debuggable failure ----------------------------------------
+  - id: sign_on_rejected
+    category: hard
+    description: Credentials rejected (misconfigured secret or locked operator)
+    detect: { text: "SGN-001", frame: "*" }
