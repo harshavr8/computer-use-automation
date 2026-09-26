@@ -1,0 +1,393 @@
+{
+  "run_id": "discovery-20260926T043025Z-4e425f",
+  "goal": "Look up member 12345 and read their current savings balance",
+  "goal_template": "Look up member {member_id} and read their current savings balance",
+  "start_route": "/login",
+  "params": {
+    "member_id": "12345"
+  },
+  "model": "claude-sonnet-5",
+  "status": "stuck",
+  "outcome_code": null,
+  "success": null,
+  "summary": "",
+  "steps": [
+    {
+      "index": 1,
+      "tool": "navigate",
+      "why": "open the entry point",
+      "status": "ok",
+      "action": {
+        "kind": "navigate",
+        "target": null,
+        "route": "/login",
+        "value": null
+      },
+      "value_source": "none",
+      "param": null,
+      "location_before": {
+        "top": "blank"
+      },
+      "location_after": {
+        "top": "/login"
+      },
+      "checkpoint": null,
+      "expect_text_unverified": null,
+      "locator_used": null,
+      "degraded": false,
+      "risk": "read_only",
+      "output": null,
+      "dialogs": [],
+      "error": null
+    },
+    {
+      "index": 2,
+      "tool": "fill",
+      "why": "Enter operator ID to sign on",
+      "status": "ok",
+      "action": {
+        "kind": "fill",
+        "target": {
+          "description": "Operator ID textbox",
+          "frame": null,
+          "strategies": [
+            {
+              "by": "anchor_text",
+              "text": "Operator ID",
+              "control": "textbox"
+            },
+            {
+              "by": "field_name",
+              "name": "f1"
+            }
+          ]
+        },
+        "route": null,
+        "value": {
+          "secret": "MOCK_USER"
+        }
+      },
+      "value_source": "secret",
+      "param": null,
+      "location_before": {
+        "top": "/login"
+      },
+      "location_after": {
+        "top": "/login"
+      },
+      "checkpoint": null,
+      "expect_text_unverified": null,
+      "locator_used": "textbox after 'Operator ID'",
+      "degraded": false,
+      "risk": "reversible",
+      "output": null,
+      "dialogs": [],
+      "error": null
+    },
+    {
+      "index": 3,
+      "tool": "fill",
+      "why": "Enter password to sign on",
+      "status": "ok",
+      "action": {
+        "kind": "fill",
+        "target": {
+          "description": "Password textbox",
+          "frame": null,
+          "strategies": [
+            {
+              "by": "anchor_text",
+              "text": "Password",
+              "control": "textbox"
+            },
+            {
+              "by": "field_name",
+              "name": "f2"
+            }
+          ]
+        },
+        "route": null,
+        "value": {
+          "secret": "MOCK_PASS"
+        }
+      },
+      "value_source": "secret",
+      "param": null,
+      "location_before": {
+        "top": "/login"
+      },
+      "location_after": {
+        "top": "/login"
+      },
+      "checkpoint": null,
+      "expect_text_unverified": null,
+      "locator_used": "textbox after 'Password'",
+      "degraded": false,
+      "risk": "reversible",
+      "output": null,
+      "dialogs": [],
+      "error": null
+    },
+    {
+      "index": 4,
+      "tool": "click",
+      "why": "Sign on to proceed to the main menu",
+      "status": "ok",
+      "action": {
+        "kind": "click",
+        "target": {
+          "description": "Sign On button",
+          "frame": null,
+          "strategies": [
+            {
+              "by": "role",
+              "role": "button",
+              "name": "Sign On"
+            }
+          ]
+        },
+        "route": null,
+        "value": null
+      },
+      "value_source": "none",
+      "param": null,
+      "location_before": {
+        "top": "/login"
+      },
+      "location_after": {
+        "top": "/app",
+        "nav": "/nav",
+        "main": "/members/search"
+      },
+      "checkpoint": null,
+      "expect_text_unverified": "MAIN MENU",
+      "locator_used": "role=button['Sign On']",
+      "degraded": false,
+      "risk": "reversible",
+      "output": null,
+      "dialogs": [],
+      "error": null
+    },
+    {
+      "index": 5,
+      "tool": "fill",
+      "why": "Enter member ID to search",
+      "status": "ok",
+      "action": {
+        "kind": "fill",
+        "target": {
+          "description": "Member Number textbox",
+          "frame": "main",
+          "strategies": [
+            {
+              "by": "anchor_text",
+              "text": "Member Number",
+              "control": "textbox"
+            },
+            {
+              "by": "field_name",
+              "name": "q1"
+            }
+          ]
+        },
+        "route": null,
+        "value": "{{inputs.member_id}}"
+      },
+      "value_source": "param",
+      "param": "member_id",
+      "location_before": {
+        "top": "/app",
+        "nav": "/nav",
+        "main": "/members/search"
+      },
+      "location_after": {
+        "top": "/app",
+        "nav": "/nav",
+        "main": "/members/search"
+      },
+      "checkpoint": null,
+      "expect_text_unverified": null,
+      "locator_used": "textbox after 'Member Number'",
+      "degraded": false,
+      "risk": "reversible",
+      "output": null,
+      "dialogs": [],
+      "error": null
+    },
+    {
+      "index": 6,
+      "tool": "click",
+      "why": "Search for member 12345 to view details",
+      "status": "ok",
+      "action": {
+        "kind": "click",
+        "target": {
+          "description": "Search button",
+          "frame": "main",
+          "strategies": [
+            {
+              "by": "role",
+              "role": "button",
+              "name": "Search"
+            }
+          ]
+        },
+        "route": null,
+        "value": null
+      },
+      "value_source": "none",
+      "param": null,
+      "location_before": {
+        "top": "/app",
+        "nav": "/nav",
+        "main": "/members/search"
+      },
+      "location_after": {
+        "top": "/app",
+        "nav": "/nav",
+        "main": "/members/12345"
+      },
+      "checkpoint": {
+        "text": "MBR DTL - MEMBER DETAIL",
+        "frame": "main"
+      },
+      "expect_text_unverified": null,
+      "locator_used": "role=button['Search']",
+      "degraded": false,
+      "risk": "reversible",
+      "output": null,
+      "dialogs": [],
+      "error": null
+    },
+    {
+      "index": 7,
+      "tool": "extract",
+      "why": "Extract the current savings balance for member 12345",
+      "status": "failed",
+      "action": {
+        "kind": "extract",
+        "target": {
+          "description": "savings_balance (cell['REGULAR SAVINGS' x 'Balance'])",
+          "frame": null,
+          "strategies": [
+            {
+              "by": "table_cell",
+              "row_key": "REGULAR SAVINGS",
+              "column_header": "Balance"
+            }
+          ]
+        },
+        "route": null,
+        "value": null
+      },
+      "value_source": "none",
+      "param": null,
+      "location_before": {
+        "top": "/app",
+        "nav": "/nav",
+        "main": "/members/12345"
+      },
+      "location_after": {},
+      "checkpoint": null,
+      "expect_text_unverified": null,
+      "locator_used": null,
+      "degraded": false,
+      "risk": null,
+      "output": {
+        "name": "savings_balance",
+        "type": "decimal",
+        "sensitivity": "financial"
+      },
+      "dialogs": [],
+      "error": "TargetNotFound: no strategy uniquely matched \"savings_balance (cell['REGULAR SAVINGS' x 'Balance'])\""
+    },
+    {
+      "index": 8,
+      "tool": "extract",
+      "why": "Retrieve current savings balance for member 12345",
+      "status": "failed",
+      "action": {
+        "kind": "extract",
+        "target": {
+          "description": "savings_balance (cell['S00' x 'Balance'])",
+          "frame": null,
+          "strategies": [
+            {
+              "by": "table_cell",
+              "row_key": "S00",
+              "column_header": "Balance"
+            }
+          ]
+        },
+        "route": null,
+        "value": null
+      },
+      "value_source": "none",
+      "param": null,
+      "location_before": {
+        "top": "/app",
+        "nav": "/nav",
+        "main": "/members/12345"
+      },
+      "location_after": {},
+      "checkpoint": null,
+      "expect_text_unverified": null,
+      "locator_used": null,
+      "degraded": false,
+      "risk": null,
+      "output": {
+        "name": "savings_balance",
+        "type": "decimal",
+        "sensitivity": "financial"
+      },
+      "dialogs": [],
+      "error": "TargetNotFound: no strategy uniquely matched \"savings_balance (cell['S00' x 'Balance'])\""
+    },
+    {
+      "index": 9,
+      "tool": "extract",
+      "why": "Read the current savings balance for member 12345.",
+      "status": "ok",
+      "action": {
+        "kind": "extract",
+        "target": {
+          "description": "savings_balance (cell['REGULAR SAVINGS' x 'Balance'])",
+          "frame": "main",
+          "strategies": [
+            {
+              "by": "table_cell",
+              "row_key": "REGULAR SAVINGS",
+              "column_header": "Balance"
+            }
+          ]
+        },
+        "route": null,
+        "value": null
+      },
+      "value_source": "none",
+      "param": null,
+      "location_before": {
+        "top": "/app",
+        "nav": "/nav",
+        "main": "/members/12345"
+      },
+      "location_after": {
+        "top": "/app",
+        "nav": "/nav",
+        "main": "/members/12345"
+      },
+      "checkpoint": null,
+      "expect_text_unverified": null,
+      "locator_used": "cell['REGULAR SAVINGS' x 'Balance']",
+      "degraded": false,
+      "risk": "read_only",
+      "output": {
+        "name": "savings_balance",
+        "type": "decimal",
+        "sensitivity": "financial"
+      },
+      "dialogs": [],
+      "error": null
+    }
+  ]
+}

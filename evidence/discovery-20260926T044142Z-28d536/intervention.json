@@ -1,0 +1,51 @@
+{
+  "run_id": "discovery-20260926T044142Z-28d536",
+  "kind": "discovery",
+  "goal": "Look up member 12345 and read their current savings balance",
+  "reason": "3 consecutive failed actions: done rejected: expected text 'S00 REGULAR SAVINGS [FINANCIAL] OPEN' is NOT visible; look at the new observation",
+  "status": "stuck",
+  "current_step": 8,
+  "location": {
+    "top": "/app",
+    "nav": "/nav",
+    "main": "/members/12345"
+  },
+  "last_steps": [
+    {
+      "index": 4,
+      "tool": "click",
+      "why": "Sign on with entered credentials to access the application",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "index": 5,
+      "tool": "fill",
+      "why": "Enter the member number to search for",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "index": 6,
+      "tool": "click",
+      "why": "Search for member 12345",
+      "status": "ok",
+      "error": null
+    },
+    {
+      "index": 7,
+      "tool": "extract",
+      "why": "Extract the current savings balance for member 12345",
+      "status": "failed",
+      "error": "TargetNotFound: no strategy uniquely matched \"savings_balance (cell['REGULAR SAVINGS' x 'Balance'])\""
+    },
+    {
+      "index": 8,
+      "tool": "extract",
+      "why": "Extract regular savings balance for member 12345",
+      "status": "ok",
+      "error": null
+    }
+  ],
+  "screenshot": "intervention.png"
+}
