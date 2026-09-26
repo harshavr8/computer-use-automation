@@ -1,0 +1,11 @@
+{% extends "_layout.html" %}{% set title = "SUB-ACCOUNT OPENED" %}
+{% block body %}
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td class="bar">SHR OPN - COMPLETE</td></tr></table>
+<p><span class="ok">SUB-ACCOUNT OPENED</span></p>
+<table class="grid" cellspacing="0">
+  <tr><td><b>Confirmation #</b></td><td>{{ conf }}</td></tr>
+  <tr><td><b>Product</b></td><td>{{ product.desc }}</td></tr>
+  <tr><td><b>Amount Transferred</b></td><td>${{ "{:,.2f}".format(amount) }}</td></tr>
+</table>
+<br>[<a href="/members/{{ member_id }}">Return to Member</a>]
+{% endblock %}

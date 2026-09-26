@@ -1,0 +1,22 @@
+{% extends "_layout.html" %}{% set title = "OPEN SUB-ACCOUNT" %}
+{% block body %}
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td class="bar">SHR OPN - OPEN SUB-ACCOUNT</td></tr></table>
+<p><b>{{ v.member_label }}:</b> {{ member_id }} &nbsp; <b>Name:</b> {{ m.name }}</p>
+{% if error %}<p><span class="msg">{{ error }}</span></p>{% endif %}
+<form method="post" action="/members/{{ member_id }}/subacct">
+<table cellpadding="4">
+  <tr><td align="right">Product:</td>
+      <td><select name="p">
+        <option value="">-- select --</option>
+        {% for code, prod in products.items() %}
+        <option value="{{ code }}" {% if form.p == code %}selected{% endif %}>{{ code }} - {{ prod.desc }}</option>
+        {% endfor %}
+      </select></td></tr>
+  <tr><td align="right">Nickname:</td><td><input type="text" name="n" size="20" value="{{ form.n }}"></td></tr>
+  <tr><td align="right">Opening Deposit:</td><td><input type="text" name="amt" size="10" value="{{ form.amt }}"></td></tr>
+  <tr><td align="right">Fund From:</td>
+      <td>S00 REGULAR SAVINGS (AVAIL ${{ "{:,.2f}".format(savings.balance) if savings else "0.00" }})</td></tr>
+  <tr><td></td><td><input type="submit" value="Continue"> &nbsp; <a href="/members/{{ member_id }}">Cancel</a></td></tr>
+</table>
+</form>
+{% endblock %}

@@ -1,0 +1,15 @@
+<html>
+<head><title>{{ v.brand }} - MEMBER SERVICING</title></head>
+<body style="margin:0;font-family:Verdana,Arial,sans-serif;font-size:11px;background:#d4d0c8">
+<table width="100%" cellpadding="3" cellspacing="0">
+  <tr><td bgcolor="#0a246a"><font color="#ffffff"><b>{{ v.brand }}</b> &nbsp; {{ v.product_version }}</font></td>
+      <td bgcolor="#0a246a" align="right"><font color="#ffffff">OPR: {{ session.user|upper }}</font></td></tr>
+</table>
+<table width="100%" height="90%" cellpadding="0" cellspacing="0">
+  <tr>
+    <td width="150" valign="top"><iframe src="/nav" name="nav" width="150" height="600" frameborder="0"></iframe></td>
+    <td valign="top"><iframe src="/members/search" name="main" width="100%" height="600" frameborder="0"></iframe></td>
+  </tr>
+</table>
+</body>
+</html>

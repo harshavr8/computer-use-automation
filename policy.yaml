@@ -1,0 +1,45 @@
+# Guardrail policy for the mock target. Loaded by cua.safety.policy.Policy.
+policy_version: 1
+
+allowed_origins:
+  - http://127.0.0.1:5001
+  - http://localhost:5001
+
+# Globs: * = exactly one path segment, ** = anything.
+allow_routes:
+  - /
+  - /login
+  - /logout
+  - /app
+  - /nav
+  - /members/search
+  - /members/*
+  - /members/*/subacct
+  - /members/*/subacct/review
+  - /members/*/subacct/confirm
+deny_routes:
+  - /__admin/**            # test-harness fault controls: never reachable by the agent
+
+allowed_actions: [navigate, click, fill, select, extract]
+
+default_risk:
+  navigate: read_only
+  extract: read_only
+  fill: reversible        # only changes unsubmitted form state
+  select: reversible
+  click: reversible       # overridden below for commit-style controls
+
+# First matching rule wins.
+risk_rules:
+  - risk: irreversible
+    action: click
+    route: /members/*/subacct/review
+    control_text: "(?i)confirm"
+    reason: opens a share and moves money
+  - risk: irreversible
+    action: click
+    control_text: "(?i)^\\s*(confirm|approve|post|transfer|delete|close account|submit payment)"
+    reason: commit-style control text on any screen
+
+# Irreversible without approval -> pause and ask a human (escalation path).
+on_irreversible: require_confirmation

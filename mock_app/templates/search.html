@@ -1,0 +1,12 @@
+{% extends "_layout.html" %}{% set title = "MEMBER INQUIRY" %}
+{% block body %}
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td class="bar">MBR INQ - MEMBER INQUIRY</td></tr></table>
+<form method="post" action="/members/search">
+<table cellpadding="4">
+  <tr><td align="right">{{ v.member_label }}:</td>
+      <td><input type="text" name="q1" size="8" maxlength="10" value="{{ q or '' }}"></td></tr>
+  <tr><td></td><td><input type="submit" value="{{ v.search_button }}"></td></tr>
+</table>
+</form>
+{% if error %}<span class="msg">{{ error }}</span>{% endif %}
+{% endblock %}

@@ -1,0 +1,6 @@
+{% extends "_layout.html" %}{% set title = "APPLICATION ERROR" %}
+{% block body %}
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td class="bar">APPLICATION ERROR</td></tr></table>
+<p><span class="msg">{{ code|default("APP-500") }} {{ detail|default("UNHANDLED EXCEPTION IN MODULE MBRSVC.DLL") }}</span></p>
+<p>Contact the help desk and reference the time of this error.</p>
+{% endblock %}

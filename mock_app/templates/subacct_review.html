@@ -1,0 +1,17 @@
+{% extends "_layout.html" %}{% set title = "REVIEW SUB-ACCOUNT" %}
+{% block body %}
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td class="bar">SHR OPN - REVIEW AND CONFIRM</td></tr></table>
+<p>Verify the details below. Confirming will open the share and transfer funds.</p>
+<table class="grid" cellspacing="0">
+  <tr><td><b>{{ v.member_label }}</b></td><td>{{ member_id }}</td></tr>
+  <tr><td><b>Product</b></td><td>{{ pending.p }} - {{ product.desc }}</td></tr>
+  <tr><td><b>Nickname</b></td><td>{{ pending.n or "(none)" }}</td></tr>
+  <tr><td><b>Opening Deposit</b></td><td>${{ pending.amt }}</td></tr>
+  <tr><td><b>Fund From</b></td><td>S00 REGULAR SAVINGS</td></tr>
+</table>
+<br>
+<form method="post" action="/members/{{ member_id }}/subacct/confirm">
+  <input type="submit" value="Confirm &amp; Open"{% if native_confirm %} onclick="return confirm('Open this sub-account and transfer funds?')"{% endif %}>
+  &nbsp; <a href="/members/{{ member_id }}/subacct">Back</a>
+</form>
+{% endblock %}
