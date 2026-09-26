@@ -1,115 +1,113 @@
-# Computer-Use Automation System (interface.ai take-home)
+# Computer-Use Automation System
 
-> Work in progress. The final README (demo path: discover, then replay) lands with the agent and replay engine.
+An LLM discovers how to do a task in a legacy back-office UI. The run is compiled into a typed, versioned **capability** artifact, and that artifact is **replayed deterministically, with no LLM**, with new inputs, runtime-error handling, and a human handoff on the same live session.
+
+- Design and trade-offs: [`REPORT.md`](REPORT.md)
+- Demonstration runs: [`evidence/README.md`](evidence/README.md)
+
+The target is a local mock of a credit-union member-servicing app (`mock_app/`). It is deliberately legacy-style (iframes, table layouts, no ids or test ids, unlabeled inputs) and has switchable runtime faults. All data is fictional.
 
 ## Setup
 
+Requires Python 3.10+.
+
     python -m venv .venv
-    # Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
+    source .venv/bin/activate            # Windows: .venv\Scripts\activate
     pip install -r requirements.txt
     python -m playwright install chromium
+    cp .env.example .env                 # then fill in ANTHROPIC_API_KEY
 
-## Run the tests
+`.env` holds:
+- `ANTHROPIC_API_KEY`: needed **only** for `discover`
+- `MOCK_USER` / `MOCK_PASS`: the mock app's fake operator credentials (`teller` / `demo-only`)
+- `CUA_MODEL`: optional model override (default `claude-sonnet-5`)
 
-    pytest
+`.env` is gitignored.
 
-Browser tests start their own copy of the mock app on a random port. If Chromium isn't installed, they are skipped with a message.
+### Running without live services
 
-## Run the mock target and probe it
+- `pytest` runs the full suite: 105 tests, about 2.5 minutes. It needs **no API key**; discovery tests use a scripted planner, and browser tests start their own mock app on a random port.
+- `compile`, `replay`, `scenarios` and `operator` never call a model.
 
-    python -m mock_app --port 5001          # terminal 1
-    python -m cua.probe --member 12345      # terminal 2 (add --headed to watch)
+## Demo path
 
-The probe signs on through the policy-guarded actuator, opens a member, and prints every control the agent would see, frame by frame, with its validated locator candidates. It writes a masked screenshot and the redacted event log to `probe_out/`.
+**Terminal 1: the target app.**
 
-## Discovery run (needs an Anthropic API key)
+    python -m mock_app --port 5001
 
-    cp .env.example .env        # then paste your key into ANTHROPIC_API_KEY
-    python -m mock_app --port 5001                                  # terminal 1
+**Terminal 2:**
+
+**1. Discovery: a real LLM run.**
+
     python -m cua discover --headed --reset-target \
-        --goal "Look up member {member_id} and read their current savings balance" \
-        --param member_id=12345                                     # terminal 2
+      --goal "Look up member {member_id} and read their current savings balance" \
+      --param member_id=12345
 
-The model drives the browser through the policy-guarded actuator. Each run writes to `evidence/discovery-<timestamp>/`:
+This prints each step with its verified checkpoint, and writes `evidence/discovery-<ts>/`: `trace.json`, `events.jsonl`, `result.json`, and a masked `final.png`.
 
-| File | Contents |
-|---|---|
-| `events.jsonl` | Redacted log of model decisions, policy verdicts, and actions |
-| `trace.json` | The structured recording the compiler turns into a capability |
-| `result.json` | Status and outputs (sensitive values redacted) |
-| `final.png` | Masked screenshot at the end of the run |
-| `intervention.json` / `.png` | Only written if the run escalated to a human |
-
-`evidence/` is committed on purpose; the brief asks for it. Delete throwaway runs before committing.
-
-## Compile the trace into a capability
+**2. Compile the trace into capabilities.**
 
     python -m cua compile evidence/<discovery-run>/trace.json --id member.get_savings_balance
 
-This writes versioned, reviewable YAML artifacts:
-- `capabilities/session.sign_on/v1.yaml`: the sign-on, split out and shared by every capability
-- `capabilities/member.get_savings_balance/v1.yaml`: the business flow
+This writes `capabilities/session.sign_on/v1.yaml` and `capabilities/member.get_savings_balance/v1.yaml`, then prints the review notes and the agent-facing tool contract.
 
-The command prints the compiler's review notes and the agent-facing tool contract. Recompiling an identical flow does not create a new version.
-
-## Replay a capability (no LLM)
+**3. Replay deterministically with a different input. No LLM.**
 
     python -m cua replay member.get_savings_balance --input member_id=23456 --show-outputs
 
-Replay signs on through `session.sign_on` if needed, then runs the recorded steps with the new input. It verifies every postcondition and returns a structured result:
+Expected output: `status: success`, `savings_balance: "15.00"`.
 
-| Status | Meaning |
-|---|---|
-| `success` | Typed outputs are returned (e.g. `savings_balance: "15.00"`) |
-| `business_outcome` | A declared outcome such as `member_not_found`, `access_denied`, or `validation_error` (with the app's message) |
-| `failed` | Includes the step, what was expected, what was observed, and a masked screenshot plus page snapshot |
-| `escalated` | The run needs a human, e.g. an irreversible step without `--approve` |
+**4. Replay with errors and exceptional states.**
 
-Recoveries (dismissed notices, reloaded error pages, re-sign-on after session expiry) are listed in the result, but they do not change the status.
+    python -m cua replay member.get_savings_balance --input member_id=99999    # business_outcome: member_not_found
+    python -m cua scenarios                                                    # 10 fault-injected replays
 
-## Replay scenario suite (fault injection)
+**5. Human handoff on the live session.**
 
-    python -m cua scenarios
-
-This replays the capability 10 times, injecting a different fault each run through the mock app's admin endpoint (a harness action, never an agent action). It covers success, a new input, not-found, access-denied, app validation, bad input, a notice dialog, a transient 500, session expiry, and a persistent 500. Each run writes its own `evidence/replay-<scenario>-*/` folder, and the command prints expected vs. actual status for each scenario.
-
-## Human handoff (take over the live session)
-
-Add `--handoff` to `replay` or `discover`. When a run escalates or hits an unrecoverable failure, it pauses and keeps the browser open (handoff implies `--headed`). It prints a banner with the exact commands to run. From a second terminal:
-
-    python -m cua operator status                        # what's waiting, why, and a screenshot path
-    python -m cua operator claim latest --as harry       # you now hold the session; automation cannot act
-    #   ... work in the open browser window; your clicks and entries are recorded ...
-    python -m cua operator done latest --as harry        # hand back; automation re-syncs and continues
-    python -m cua operator done latest --as harry --approve   # or: approve a pending irreversible step
-    python -m cua operator abort latest --as harry --note "..."
-
-After a handoff, replay resumes after the newest recorded checkpoint visible on screen, and it never repeats an irreversible step. Discovery continues with a note to the model describing what the human did.
-
-Try it:
-
-    python -m cua replay member.open_club_account --handoff \
-        --input member_id=12345 --input product=VC --input amount=40.00
-
-`member.open_club_account` is a hand-authored capability. Copy it into the store first:
+First, install the hand-authored capability that has an irreversible step:
 
     mkdir -p capabilities/member.open_club_account
     cp tests/fixtures/member.open_club_account.v1.yaml capabilities/member.open_club_account/v1.yaml
+
+Then run it with handoff enabled:
+
+    python -m cua replay member.open_club_account --handoff \
+      --input member_id=12345 --input product=VC --input amount=40.00 --show-outputs
+
+It pauses before *Confirm & Open*. From **terminal 3** (in the project folder, venv active):
+
+    python -m cua operator status
+    python -m cua operator claim latest --as <you>
+    python -m cua operator done latest --as <you> --approve
+
+Instead of `--approve`, you can click *Confirm & Open* yourself in the browser and then run `done`; replay re-syncs past the step you performed.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `python -m cua discover` | LLM-driven observe→decide→act loop (`--handoff` to hand a stuck run to a human) |
+| `python -m cua compile` | Trace → versioned capability YAML |
+| `python -m cua replay` | Deterministic replay (`--approve <id>` for irreversible steps, `--handoff` for a human) |
+| `python -m cua scenarios` | Fault-injection replay suite, which writes evidence |
+| `python -m cua operator` | `status` / `claim` / `done [--approve]` / `abort` for paused runs |
+| `python -m cua.probe` | Print every control the agent would see, frame by frame |
 
 ## Layout
 
 | Path | Contents |
 |---|---|
-| `mock_app/` | Legacy-style target app with fault injection (see `mock_app/README.md`) |
+| `mock_app/` | Legacy-style target with fault injection and a second tenant variant (`--variant tenant_b`) |
 | `cua/core/` | Surface-neutral vocabulary: `Target`, locator strategies, `Action`, `Observation` |
-| `cua/driver/` | `SurfaceDriver` protocol (the seam) and its web implementation, `WebPlaywrightDriver` |
-| `cua/safety/` | Policy gate (allowlist and risk classes) and redactor |
-| `cua/runtime/actuator.py` | The only path from decide to act: resolve, gate, act, verify location, log |
-| `cua/evidence/` | Redacted JSONL run log |
-| `cua/agent/` | Discovery loop, tool schemas, prompt, and planner (Anthropic, or scripted for tests) |
-| `cua/artifact/` | Capability schema, compiler (trace to artifact), and versioned store |
+| `cua/driver/` | `SurfaceDriver` protocol (the seam) and its Playwright implementation |
+| `cua/runtime/actuator.py` | The single path from decide to act: resolve, policy, secrets, act, location check, log |
+| `cua/agent/` | Discovery loop, tool schemas, prompt, planners (Anthropic, or scripted for tests) |
+| `cua/artifact/` | Capability schema, compiler, versioned store, app-profile model |
 | `cua/replay/` | Deterministic replay engine, result contract, scenario suite |
-| `cua/control/` | Handoff controller: control lease, operator command inbox, human-action capture |
-| `profiles/` | App profiles: per-product known conditions (business outcomes, recoveries) |
-| `capabilities/` | Compiled capability artifacts (`<id>/v<N>.yaml`) |
-| `policy.yaml` | Guardrail configuration |
+| `cua/control/` | Human handoff: control lease, operator command inbox, action capture |
+| `cua/safety/` | Policy gate and redaction |
+| `profiles/cu-servicing.yaml` | Per-product known conditions: business outcomes, recoveries, hard failures |
+| `policy.yaml` | Allowlist and risk rules |
+| `capabilities/` | Compiled artifacts (`<id>/v<N>.yaml`) |
+| `evidence/` | Discovery, replay, and handoff runs (see `evidence/README.md`) |
+| `tests/` | 105 tests; browser tests are marked `browser` |
