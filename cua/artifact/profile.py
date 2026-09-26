@@ -23,7 +23,7 @@ class _Strict(BaseModel):
 
 
 class Recovery(_Strict):
-    kind: Literal["retry_step", "click", "resign_on"]
+    kind: Literal["reload", "click", "resign_on"]
     target: Target | None = None           # for click
     max_attempts: int = 2
     backoff_ms: int = 500

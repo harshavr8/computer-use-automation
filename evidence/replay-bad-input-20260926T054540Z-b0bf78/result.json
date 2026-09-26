@@ -1,0 +1,22 @@
+{
+  "run_id": "replay-bad-input-20260926T054540Z-b0bf78",
+  "capability": "member.get_savings_balance",
+  "version": 1,
+  "status": "failed",
+  "outputs": {},
+  "outcome": null,
+  "failure": {
+    "category": "input_invalid",
+    "step": null,
+    "expected": "inputs matching the capability contract",
+    "observed": "input 'member_id' does not match ^\\d+$",
+    "detail": {},
+    "evidence": []
+  },
+  "escalation": null,
+  "recoveries": [],
+  "drift": [],
+  "steps": [],
+  "duration_ms": 7,
+  "evidence_dir": "evidence/replay-bad-input-20260926T054540Z-b0bf78"
+}

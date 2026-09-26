@@ -159,6 +159,8 @@ class Capability(_Strict):
         for s in self.steps:
             if isinstance(s.value, str):
                 texts.append(s.value)
+            if s.route:
+                texts.append(s.route)
             if s.postcondition:
                 texts.append(s.postcondition.check.text)
         for t in texts:

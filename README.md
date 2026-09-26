@@ -52,6 +52,27 @@ This writes versioned, reviewable YAML artifacts:
 
 The command prints the compiler's review notes and the agent-facing tool contract. Recompiling an identical flow does not create a new version.
 
+## Replay a capability (no LLM)
+
+    python -m cua replay member.get_savings_balance --input member_id=23456 --show-outputs
+
+Replay signs on through `session.sign_on` if needed, then runs the recorded steps with the new input. It verifies every postcondition and returns a structured result:
+
+| Status | Meaning |
+|---|---|
+| `success` | Typed outputs are returned (e.g. `savings_balance: "15.00"`) |
+| `business_outcome` | A declared outcome such as `member_not_found`, `access_denied`, or `validation_error` (with the app's message) |
+| `failed` | Includes the step, what was expected, what was observed, and a masked screenshot plus page snapshot |
+| `escalated` | The run needs a human, e.g. an irreversible step without `--approve` |
+
+Recoveries (dismissed notices, reloaded error pages, re-sign-on after session expiry) are listed in the result, but they do not change the status.
+
+## Replay scenario suite (fault injection)
+
+    python -m cua scenarios
+
+This replays the capability 10 times, injecting a different fault each run through the mock app's admin endpoint (a harness action, never an agent action). It covers success, a new input, not-found, access-denied, app validation, bad input, a notice dialog, a transient 500, session expiry, and a persistent 500. Each run writes its own `evidence/replay-<scenario>-*/` folder, and the command prints expected vs. actual status for each scenario.
+
 ## Layout
 
 | Path | Contents |
@@ -64,6 +85,7 @@ The command prints the compiler's review notes and the agent-facing tool contrac
 | `cua/evidence/` | Redacted JSONL run log |
 | `cua/agent/` | Discovery loop, tool schemas, prompt, and planner (Anthropic, or scripted for tests) |
 | `cua/artifact/` | Capability schema, compiler (trace to artifact), and versioned store |
+| `cua/replay/` | Deterministic replay engine, result contract, scenario suite |
 | `profiles/` | App profiles: per-product known conditions (business outcomes, recoveries) |
 | `capabilities/` | Compiled capability artifacts (`<id>/v<N>.yaml`) |
 | `policy.yaml` | Guardrail configuration |

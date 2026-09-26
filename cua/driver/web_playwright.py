@@ -379,6 +379,43 @@ class WebPlaywrightDriver:
                 continue
         return False, None
 
+    def find_text(self, text: str, frame: str | None, regex: bool = False) -> tuple[str, str | None] | None:
+        """First visible element matching text in `frame` ('*' = all frames).
+        Returns (the element's full text, frame name) or None. Used for condition detection."""
+        needle: str | re.Pattern[str] = re.compile(text) if regex else text
+        frames = self._named_frames() if frame == "*" else [(frame, self._frame_or_none(frame))]
+        for name, f in frames:
+            if f is None:
+                continue
+            try:
+                loc = f.get_by_text(needle)
+                for i in range(min(loc.count(), 5)):
+                    el = loc.nth(i)
+                    if el.is_visible():
+                        return " ".join(el.inner_text().split()), name
+            except Exception:
+                continue
+        return None
+
+    def wait(self, ms: int) -> None:
+        """Pump the event loop for `ms` (keeps dialog/network handlers running)."""
+        self.page.wait_for_timeout(ms)
+
+    def reload_frame(self, frame: str | None) -> None:
+        """Re-GET the frame's current URL. Never resubmits a form (unlike a browser reload)."""
+        f = self._frame(frame)
+        f.goto(f.url)
+        self._settle()
+
+    def visible_text(self, frame: str | None, limit: int = 400) -> str:
+        f = self._frame_or_none(frame)
+        if f is None:
+            return ""
+        try:
+            return " ".join(f.locator("body").inner_text(timeout=1000).split())[:limit]
+        except Exception:
+            return ""
+
     def snapshot_image(self) -> bytes:
         """Viewport JPEG for the model. Never written to disk by the driver."""
         return self.page.screenshot(type="jpeg", quality=60, full_page=False)

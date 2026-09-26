@@ -26,6 +26,8 @@ class FaultConfig:
     fail_next: int = 0
     # If set, fail_next only applies to paths containing this substring.
     fail_route: str | None = None
+    # Expire the session on the next N form submits under /members (deterministic timeout).
+    expire_next: int = 0
 
     @classmethod
     def from_dict(cls, data: dict) -> "FaultConfig":

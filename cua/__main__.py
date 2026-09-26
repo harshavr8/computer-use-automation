@@ -94,6 +94,59 @@ def cmd_compile(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_result(res, show_outputs: bool) -> None:
+    print(f"status:     {res.status}")
+    if res.outputs:
+        shown = res.outputs if show_outputs else {k: "<hidden: use --show-outputs>" for k in res.outputs}
+        print(f"outputs:    {json.dumps(shown)}")
+    if res.outcome:
+        print(f"outcome:    {res.outcome.code} at step {res.outcome.step}"
+              + (f"  message: {res.outcome.message!r}" if res.outcome.message else ""))
+    if res.failure:
+        f = res.failure
+        print(f"failure:    {f.category} at step {f.step}")
+        print(f"  expected: {f.expected}")
+        print(f"  observed: {f.observed[:300]}")
+        if f.evidence:
+            print(f"  evidence: {', '.join(f.evidence)}")
+    if res.escalation:
+        print(f"escalated:  {res.escalation.reason} (step {res.escalation.step})")
+    for r in res.recoveries:
+        print(f"recovered:  {r.condition} at {r.step} via {r.action} (attempt {r.attempt})")
+    for d in res.drift:
+        print(f"drift:      {d}")
+    print(f"steps:      {len(res.steps)} in {res.duration_ms} ms")
+    print(f"evidence:   {res.evidence_dir}")
+
+
+def cmd_replay(args: argparse.Namespace) -> int:
+    from .replay.runner import ReplayConfig, replay_once
+    from .safety.policy import Approval
+
+    approval = Approval(approver=args.approve, scope=f"{args.capability} via CLI") if args.approve else None
+    cfg = ReplayConfig(base_url=args.base_url, headed=args.headed)
+    res = replay_once(cfg, args.capability, _kv(args.input), version=args.version, approval=approval)
+    _print_result(res, args.show_outputs)
+    return 0 if res.status in ("success", "business_outcome") else 1
+
+
+def cmd_scenarios(args: argparse.Namespace) -> int:
+    from .replay.runner import ReplayConfig, run_scenarios
+
+    cfg = ReplayConfig(base_url=args.base_url, headed=args.headed)
+    results = run_scenarios(cfg, args.only or None)
+    print(f"{'scenario':16} {'expected':17} {'got':17} {'detail':44} evidence")
+    ok = True
+    for sc, res in results:
+        detail = (res.outcome.code if res.outcome else res.failure.category if res.failure
+                  else ", ".join(r.condition for r in res.recoveries) or "-")
+        match = res.status == sc.expect
+        ok &= match
+        print(f"{sc.name:16} {sc.expect:17} {res.status:17} {detail:44} {Path(res.evidence_dir).name}"
+              + ("" if match else "   <-- MISMATCH"))
+    return 0 if ok else 1
+
+
 def main() -> None:
     load_dotenv()
     p = argparse.ArgumentParser(prog="python -m cua")
@@ -123,6 +176,22 @@ def main() -> None:
     c.add_argument("--variant", default="base")
     c.add_argument("--out", default="capabilities")
     c.set_defaults(func=cmd_compile)
+
+    r = sub.add_parser("replay", help="replay a capability deterministically (no LLM)")
+    r.add_argument("capability", help="capability id, e.g. member.get_savings_balance")
+    r.add_argument("--input", action="append", default=[], help="NAME=VALUE (repeatable)")
+    r.add_argument("--version", type=int, default=None, help="default: latest")
+    r.add_argument("--approve", default=None, help="approver id; allows irreversible steps, e.g. human:harry")
+    r.add_argument("--base-url", default="http://127.0.0.1:5001")
+    r.add_argument("--headed", action="store_true")
+    r.add_argument("--show-outputs", action="store_true")
+    r.set_defaults(func=cmd_replay)
+
+    sc = sub.add_parser("scenarios", help="replay suite with injected faults (writes evidence)")
+    sc.add_argument("--only", action="append", default=[], help="run just these scenario names")
+    sc.add_argument("--base-url", default="http://127.0.0.1:5001")
+    sc.add_argument("--headed", action="store_true")
+    sc.set_defaults(func=cmd_scenarios)
 
     args = p.parse_args()
     raise SystemExit(args.func(args))

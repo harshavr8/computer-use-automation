@@ -1,0 +1,39 @@
+=== frame top http://127.0.0.1:5001/app
+- table:
+  - rowgroup:
+    - 'row "FIRST COMMUNITY CREDIT UNION MbrSvc 4.2.1 OPR: TELLER"':
+      - cell "FIRST COMMUNITY CREDIT UNION MbrSvc 4.2.1"
+      - 'cell "OPR: TELLER"'
+- table:
+  - rowgroup:
+    - row:
+      - cell:
+        - iframe
+      - cell:
+        - iframe
+
+=== frame nav http://127.0.0.1:5001/nav
+- table:
+  - rowgroup:
+    - row "FUNCTIONS":
+      - cell "FUNCTIONS"
+    - row "Member Inquiry":
+      - cell "Member Inquiry":
+        - link "Member Inquiry":
+          - /url: /members/search
+    - row "Transactions":
+      - cell "Transactions"
+    - row "Reports":
+      - cell "Reports"
+    - row "Sign Off":
+      - cell "Sign Off":
+        - link "Sign Off":
+          - /url: /logout
+
+=== frame main http://127.0.0.1:5001/members/12345
+- table:
+  - rowgroup:
+    - row "APPLICATION ERROR":
+      - cell "APPLICATION ERROR"
+- paragraph: APP-500 UNHANDLED EXCEPTION IN MODULE MBRSVC.DLL
+- paragraph: Contact the help desk and reference the time of this error.

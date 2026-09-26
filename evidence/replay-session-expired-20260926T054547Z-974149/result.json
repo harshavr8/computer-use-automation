@@ -1,0 +1,142 @@
+{
+  "run_id": "replay-session-expired-20260926T054547Z-974149",
+  "capability": "member.get_savings_balance",
+  "version": 1,
+  "status": "success",
+  "outputs": {
+    "savings_balance": "[FINANCIAL]"
+  },
+  "outcome": null,
+  "failure": null,
+  "escalation": null,
+  "recoveries": [
+    {
+      "condition": "session_expired",
+      "step": "click_search",
+      "action": "resign_on",
+      "attempt": 1
+    }
+  ],
+  "drift": [],
+  "steps": [
+    {
+      "id": "open_login",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": null,
+      "locator_rank": null,
+      "degraded": false,
+      "duration_ms": 367
+    },
+    {
+      "id": "fill_operator_id",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Operator ID'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 118
+    },
+    {
+      "id": "fill_password",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Password'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 95
+    },
+    {
+      "id": "click_sign_on",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "role=button['Sign On']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 512
+    },
+    {
+      "id": "fill_member_number",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "textbox after 'Member Number'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 89
+    },
+    {
+      "id": "click_search",
+      "capability": "member.get_savings_balance",
+      "status": "failed",
+      "locator": "role=button['Search']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 0
+    },
+    {
+      "id": "open_login",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": null,
+      "locator_rank": null,
+      "degraded": false,
+      "duration_ms": 351
+    },
+    {
+      "id": "fill_operator_id",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Operator ID'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 89
+    },
+    {
+      "id": "fill_password",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Password'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 76
+    },
+    {
+      "id": "click_sign_on",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "role=button['Sign On']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 502
+    },
+    {
+      "id": "fill_member_number",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "textbox after 'Member Number'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 87
+    },
+    {
+      "id": "click_search",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "role=button['Search']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 415
+    },
+    {
+      "id": "read_savings_balance",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "cell['REGULAR SAVINGS' x 'Balance']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 84
+    }
+  ],
+  "duration_ms": 3294,
+  "evidence_dir": "evidence/replay-session-expired-20260926T054547Z-974149"
+}

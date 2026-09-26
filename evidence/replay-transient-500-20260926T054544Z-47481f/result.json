@@ -1,0 +1,88 @@
+{
+  "run_id": "replay-transient-500-20260926T054544Z-47481f",
+  "capability": "member.get_savings_balance",
+  "version": 1,
+  "status": "success",
+  "outputs": {
+    "savings_balance": "[FINANCIAL]"
+  },
+  "outcome": null,
+  "failure": null,
+  "escalation": null,
+  "recoveries": [
+    {
+      "condition": "transient_app_error",
+      "step": "click_search",
+      "action": "reload",
+      "attempt": 1
+    }
+  ],
+  "drift": [],
+  "steps": [
+    {
+      "id": "open_login",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": null,
+      "locator_rank": null,
+      "degraded": false,
+      "duration_ms": 361
+    },
+    {
+      "id": "fill_operator_id",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Operator ID'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 117
+    },
+    {
+      "id": "fill_password",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Password'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 92
+    },
+    {
+      "id": "click_sign_on",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "role=button['Sign On']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 458
+    },
+    {
+      "id": "fill_member_number",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "textbox after 'Member Number'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 88
+    },
+    {
+      "id": "click_search",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "role=button['Search']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 1578
+    },
+    {
+      "id": "read_savings_balance",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "cell['REGULAR SAVINGS' x 'Balance']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 82
+    }
+  ],
+  "duration_ms": 2808,
+  "evidence_dir": "evidence/replay-transient-500-20260926T054544Z-47481f"
+}

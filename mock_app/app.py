@@ -74,7 +74,11 @@ def create_app(
         def wrapper(*args, **kwargs):
             if not session.get("user"):
                 return redirect(url_for("login"))
-            if time.time() - session.get("last_seen", 0) > fx.session_timeout_s:
+            # expire_next fires on a transaction submit (POST), where real apps check the session
+            forced = fx.expire_next > 0 and request.method == "POST" and request.path.startswith("/members")
+            if forced:
+                fx.expire_next -= 1
+            if forced or time.time() - session.get("last_seen", 0) > fx.session_timeout_s:
                 session.clear()
                 return redirect(url_for("login", expired=1))
             session["last_seen"] = time.time()

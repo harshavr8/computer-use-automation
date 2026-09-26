@@ -1,0 +1,74 @@
+{
+  "run_id": "replay-not-found-20260926T054534Z-8262b6",
+  "capability": "member.get_savings_balance",
+  "version": 1,
+  "status": "business_outcome",
+  "outputs": {},
+  "outcome": {
+    "code": "member_not_found",
+    "message": null,
+    "step": "click_search"
+  },
+  "failure": null,
+  "escalation": null,
+  "recoveries": [],
+  "drift": [],
+  "steps": [
+    {
+      "id": "open_login",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": null,
+      "locator_rank": null,
+      "degraded": false,
+      "duration_ms": 356
+    },
+    {
+      "id": "fill_operator_id",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Operator ID'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 118
+    },
+    {
+      "id": "fill_password",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Password'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 96
+    },
+    {
+      "id": "click_sign_on",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "role=button['Sign On']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 501
+    },
+    {
+      "id": "fill_member_number",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "textbox after 'Member Number'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 88
+    },
+    {
+      "id": "click_search",
+      "capability": "member.get_savings_balance",
+      "status": "failed",
+      "locator": "role=button['Search']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 0
+    }
+  ],
+  "duration_ms": 1575,
+  "evidence_dir": "evidence/replay-not-found-20260926T054534Z-8262b6"
+}

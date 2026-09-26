@@ -42,9 +42,9 @@ conditions:
         strategies: [ { by: role, role: button, name: OK } ]
   - id: transient_app_error
     category: recoverable
-    description: Transient server error page; retry the step
+    description: Transient server error page; reload it (always a GET, never a form resubmit)
     detect: { text: "APP-5\\d\\d", frame: "*", regex: true }
-    recovery: { kind: retry_step, max_attempts: 2, backoff_ms: 750 }
+    recovery: { kind: reload, max_attempts: 2, backoff_ms: 750 }
   - id: session_expired
     category: recoverable
     description: Idle session expired; sign on again and resume

@@ -139,3 +139,12 @@ def test_markup_has_no_ids_or_test_ids(make_client):
     for path in ["/members/search", "/members/12345", "/members/12345/subacct"]:
         html = c.get(path).data.lower()
         assert b" id=" not in html and b"data-testid" not in html
+
+
+def test_expire_next_is_one_shot(make_client):
+    _, c = make_client(expire_next=1)
+    assert c.get("/members/search").status_code == 200          # page views are unaffected
+    first = search(c, "12345")
+    assert first.status_code == 302 and "expired=1" in first.headers["Location"]
+    c.post("/login", data={"f1": "teller", "f2": "demo-only"})
+    assert search(c, "12345").headers["Location"].endswith("/members/12345")

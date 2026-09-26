@@ -1,0 +1,96 @@
+{
+  "run_id": "replay-persistent-500-20260926T054551Z-395110",
+  "capability": "member.get_savings_balance",
+  "version": 1,
+  "status": "failed",
+  "outputs": {},
+  "outcome": null,
+  "failure": {
+    "category": "recovery_exhausted",
+    "step": "click_search",
+    "expected": "transient_app_error to clear within 2 recoveries",
+    "observed": "[top /app] FIRST COMMUNITY CREDIT UNION MbrSvc 4.2.1 OPR: TELLER | [nav /nav] FUNCTIONS Member Inquiry Transactions Reports Sign Off | [main /members/12345] APPLICATION ERROR APP-500 UNHANDLED EXCEPTION IN MODULE MBRSVC.DLL Contact the help desk and reference the time of this error.",
+    "detail": {
+      "condition": "transient_app_error",
+      "attempts": 2
+    },
+    "evidence": [
+      "failure.png",
+      "failure_snapshot.txt"
+    ]
+  },
+  "escalation": null,
+  "recoveries": [
+    {
+      "condition": "transient_app_error",
+      "step": "click_search",
+      "action": "reload",
+      "attempt": 1
+    },
+    {
+      "condition": "transient_app_error",
+      "step": "click_search",
+      "action": "reload",
+      "attempt": 2
+    }
+  ],
+  "drift": [],
+  "steps": [
+    {
+      "id": "open_login",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": null,
+      "locator_rank": null,
+      "degraded": false,
+      "duration_ms": 358
+    },
+    {
+      "id": "fill_operator_id",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Operator ID'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 119
+    },
+    {
+      "id": "fill_password",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "textbox after 'Password'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 93
+    },
+    {
+      "id": "click_sign_on",
+      "capability": "session.sign_on",
+      "status": "ok",
+      "locator": "role=button['Sign On']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 505
+    },
+    {
+      "id": "fill_member_number",
+      "capability": "member.get_savings_balance",
+      "status": "ok",
+      "locator": "textbox after 'Member Number'",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 89
+    },
+    {
+      "id": "click_search",
+      "capability": "member.get_savings_balance",
+      "status": "failed",
+      "locator": "role=button['Search']",
+      "locator_rank": 0,
+      "degraded": false,
+      "duration_ms": 0
+    }
+  ],
+  "duration_ms": 3945,
+  "evidence_dir": "evidence/replay-persistent-500-20260926T054551Z-395110"
+}
